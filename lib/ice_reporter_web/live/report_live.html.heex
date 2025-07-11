@@ -42,24 +42,7 @@
           id="map-container"
           class="h-96 lg:h-[500px] relative bg-gradient-to-br from-blue-100 to-red-100 rounded-b-3xl"
         >
-          <!-- Map placeholder with icy feel -->
-          <div class="absolute inset-0 flex items-center justify-center">
-            <div class="text-center text-blue-600">
-              <div class="text-8xl mb-4 animate-pulse">🗺️</div>
-              <p class="text-xl font-black">Interactive Cool Map</p>
-              <p class="text-sm opacity-75 font-bold">Click anywhere to drop a pin! ❄️</p>
-            </div>
-          </div>
-          
-<!-- Simulated report pins -->
-          <%= for {report, index} <- Enum.with_index(@reports) do %>
-            <div
-              class="absolute w-8 h-8 bg-gradient-to-br from-red-400 to-blue-500 border-3 border-white rounded-full animate-pulse shadow-lg"
-              style={"left: #{rem(index * 37, 80) + 10}%; top: #{rem(index * 23, 70) + 15}%;"}
-            >
-              <div class="absolute inset-0 bg-white/30 rounded-full animate-ping"></div>
-            </div>
-          <% end %>
+          <!-- Mapbox will render here -->
         </div>
       </div>
       
