@@ -17,7 +17,8 @@ defmodule IceReporterWeb.Router do
   scope "/", IceReporterWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", ReportLive
+    live "/reports", ReportLive
   end
 
   # Other scopes may use custom stacks.
