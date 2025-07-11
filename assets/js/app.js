@@ -112,6 +112,9 @@ function initializeLeaflet() {
   });
 
   console.log("✅ Leaflet map initialized successfully!");
+
+  // Expose map globally for submitReport function
+  window.leafletMap = leafletMap;
 }
 
 function showReportPopup(latlng) {
