@@ -84,6 +84,21 @@ window.addEventListener("phx:remove_report_marker", (e) => {
   removeReportMarker(e.detail.id);
 });
 
+window.addEventListener("phx:show_address_suggestions", (e) => {
+  console.log("🔍 Showing address suggestions:", e.detail.suggestions);
+  showAddressSuggestions(e.detail.suggestions);
+});
+
+window.addEventListener("phx:hide_address_suggestions", (e) => {
+  console.log("🔍 Hiding address suggestions");
+  hideAddressSuggestions();
+});
+
+window.addEventListener("phx:fly_to_address", (e) => {
+  console.log("✈️ Flying to address:", e.detail);
+  flyToAddress(e.detail.lat, e.detail.lng, e.detail.address);
+});
+
 // connect if there are any LiveViews on the page
 liveSocket.connect();
 
@@ -140,6 +155,134 @@ function initializeLeaflet() {
 
   // Expose map globally
   window.leafletMap = leafletMap;
+
+  // Set up address search functionality
+  setupAddressSearch();
+}
+
+function setupAddressSearch() {
+  const searchInput = document.getElementById("address-search");
+  if (!searchInput) return;
+
+  // Handle Enter key press
+  searchInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const suggestions = document.querySelectorAll(".address-suggestion");
+      if (suggestions.length > 0) {
+        // Select first suggestion on Enter
+        suggestions[0].click();
+      }
+    }
+
+    // Handle escape key to hide suggestions
+    if (e.key === "Escape") {
+      hideAddressSuggestions();
+    }
+  });
+
+  // Hide suggestions when clicking outside
+  document.addEventListener("click", function (e) {
+    if (
+      !e.target.closest("#address-search") &&
+      !e.target.closest("#address-suggestions")
+    ) {
+      hideAddressSuggestions();
+    }
+  });
+}
+
+function showAddressSuggestions(suggestions) {
+  const suggestionsContainer = document.getElementById("address-suggestions");
+  if (!suggestionsContainer) return;
+
+  if (suggestions.length === 0) {
+    hideAddressSuggestions();
+    return;
+  }
+
+  const suggestionsHTML = suggestions
+    .map(
+      (suggestion) => `
+        <div class="address-suggestion px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-blue-100 last:border-b-0"
+             onclick="selectAddress(${suggestion.lat}, ${suggestion.lng}, '${suggestion.address.replace(/'/g, "\\'")}')">
+          <div class="font-bold text-blue-700">${suggestion.address}</div>
+        </div>
+      `,
+    )
+    .join("");
+
+  suggestionsContainer.innerHTML = `<div class="bg-white border-3 border-blue-200 rounded-xl mt-2 shadow-2xl max-h-60 overflow-y-auto">${suggestionsHTML}</div>`;
+  suggestionsContainer.classList.remove("hidden");
+}
+
+function hideAddressSuggestions() {
+  const suggestionsContainer = document.getElementById("address-suggestions");
+  if (suggestionsContainer) {
+    suggestionsContainer.classList.add("hidden");
+    suggestionsContainer.innerHTML = "";
+  }
+}
+
+function selectAddress(lat, lng, address) {
+  console.log(`📍 Address selected: ${address} at ${lat}, ${lng}`);
+
+  // Update search input
+  const searchInput = document.getElementById("address-search");
+  if (searchInput) {
+    searchInput.value = address;
+  }
+
+  // Hide suggestions
+  hideAddressSuggestions();
+
+  // Send event to LiveView
+  if (window.liveSocket && window.liveSocket.main) {
+    window.liveSocket.main.pushEvent("select_address", {
+      lat: lat,
+      lng: lng,
+      address: address,
+    });
+  }
+}
+
+function flyToAddress(lat, lng, address) {
+  if (!leafletMap) return;
+
+  console.log(`✈️ Flying to: ${address} at ${lat}, ${lng}`);
+
+  // Fly to the address with a nice animation
+  leafletMap.flyTo([lat, lng], 16, {
+    animate: true,
+    duration: 1.5,
+  });
+
+  // Add a temporary marker to show the searched location
+  const tempMarker = L.marker([lat, lng], {
+    icon: L.divIcon({
+      html: `<div style="
+        background: linear-gradient(135deg, #3b82f6, #ef4444); 
+        border: 3px solid white; 
+        border-radius: 50%; 
+        width: 30px; 
+        height: 30px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        font-size: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: pulse 2s infinite;
+      ">📍</div>`,
+      className: "temp-search-marker",
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+    }),
+  }).addTo(leafletMap);
+
+  // Remove the temporary marker after 3 seconds
+  setTimeout(() => {
+    leafletMap.removeLayer(tempMarker);
+  }, 3000);
 }
 
 function showReportPopup(latlng) {
@@ -198,6 +341,9 @@ window.submitReport = function (lat, lng, type) {
   // Add temporary marker immediately for instant feedback
   addReportMarker(lat, lng, type, true);
 };
+
+// Make selectAddress globally available
+window.selectAddress = selectAddress;
 
 // Function to add report markers with emojis
 function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
