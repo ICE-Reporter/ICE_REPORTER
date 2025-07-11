@@ -37,7 +37,9 @@ defmodule IceReporter.Report do
     case get_field(changeset, :expires_at) do
       nil ->
         # Default to 24 hours from now
-        expires_at = DateTime.utc_now() |> DateTime.add(24 * 60 * 60, :second)
+        expires_at =
+          DateTime.utc_now() |> DateTime.add(24 * 60 * 60, :second) |> DateTime.truncate(:second)
+
         put_change(changeset, :expires_at, expires_at)
 
       _ ->
