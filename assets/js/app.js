@@ -27,30 +27,11 @@ import topbar from "../vendor/topbar";
 const csrfToken = document
   .querySelector("meta[name='csrf-token']")
   .getAttribute("content");
-const liveSocket = new LiveSocket("/live", Socket, {
-  longPollFallbackMs: 2500,
-  params: { _csrf_token: csrfToken },
-});
-
-// Show progress bar on live navigation and form submits
-topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
-window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
-window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
-
-// connect if there are any LiveViews on the page
-liveSocket.connect();
-
-// expose liveSocket on window for web console debug logs and latency simulation:
-// >> liveSocket.enableDebug()
-// >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
-// >> liveSocket.disableLatencySim()
-window.liveSocket = liveSocket;
 
 // Leaflet integration for ICE Reporter
 let leafletMap = null;
 let reportPopup = null;
 
-// Initialize Leaflet when the page loads
 // LiveView hook for map initialization
 const Hooks = {
   MapContainer: {
@@ -74,9 +55,34 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: Hooks,
 });
 
+// Show progress bar on live navigation and form submits
+topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
+window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
+window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
+
+// connect if there are any LiveViews on the page
+liveSocket.connect();
+
+// expose liveSocket on window for web console debug logs and latency simulation:
+// >> liveSocket.enableDebug()
+// >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
+// >> liveSocket.disableLatencySim()
+window.liveSocket = liveSocket;
+
 function initializeLeaflet() {
   const mapContainer = document.getElementById("map-container");
-  if (!mapContainer) return;
+  if (!mapContainer) {
+    console.log("❌ Map container not found");
+    return;
+  }
+
+  // Clean up existing map if it exists
+  if (leafletMap) {
+    leafletMap.remove();
+    leafletMap = null;
+  }
+
+  console.log("🗺️ Initializing Leaflet map...");
 
   // Create Leaflet map centered on USA
   leafletMap = L.map(mapContainer, {
@@ -101,10 +107,11 @@ function initializeLeaflet() {
 
   // Add click handler for placing reports
   leafletMap.on("click", function (e) {
+    console.log("🗺️ Map clicked at:", e.latlng);
     showReportPopup(e.latlng);
   });
 
-  console.log("🗺️ Leaflet map initialized successfully!");
+  console.log("✅ Leaflet map initialized successfully!");
 }
 
 function showReportPopup(latlng) {
@@ -144,7 +151,7 @@ function showReportPopup(latlng) {
 
 // Function to submit report via LiveView
 window.submitReport = function (lat, lng, type) {
-  console.log(`Submitting report: ${type} at ${lat}, ${lng}`);
+  console.log(`🧊 Submitting report: ${type} at ${lat}, ${lng}`);
 
   // Close the popup
   if (reportPopup) {
