@@ -1,0 +1,177 @@
+<Layouts.app flash={@flash}>
+  <div class="min-h-screen bg-gradient-to-br from-gray-900 to-red-900">
+    <!-- Emergency Header -->
+    <div class="bg-gradient-to-r from-red-600 to-orange-500 px-4 py-3 text-center shadow-lg border-b-4 border-yellow-400">
+      <h1 class="text-3xl font-black text-white uppercase tracking-wider drop-shadow-lg">
+        🚨 ICE Reporter 🚨
+      </h1>
+      <p class="text-lg text-white/90 font-bold mt-1">
+        Real-Time Immigration Enforcement Alert System
+      </p>
+    </div>
+    
+<!-- Warning Banner -->
+    <div class="bg-yellow-400 text-black px-4 py-2 text-center font-bold text-sm">
+      ⚠️ ANONYMOUS REPORTING SYSTEM - YOUR SAFETY IS PRIORITY ⚠️
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto">
+      <!-- Map Section -->
+      <div class="lg:col-span-2 bg-gray-800 rounded-xl border-2 border-red-500 shadow-2xl">
+        <div class="p-4 border-b border-red-500/30">
+          <h2 class="text-xl font-black text-yellow-400 uppercase tracking-wide">
+            📍 Live Activity Map
+          </h2>
+        </div>
+        <div id="map-container" class="h-96 lg:h-[500px] relative bg-gray-700 rounded-b-xl">
+          <!-- Map placeholder with simulated pins -->
+          <div class="absolute inset-0 flex items-center justify-center">
+            <div class="text-center text-white">
+              <div class="text-6xl mb-4">🗺️</div>
+              <p class="text-lg font-bold">Interactive Map Loading...</p>
+              <p class="text-sm opacity-75">Click to place reports</p>
+            </div>
+          </div>
+          
+<!-- Simulated report pins -->
+          <%= for {report, index} <- Enum.with_index(@reports) do %>
+            <div
+              class="absolute w-6 h-6 bg-red-500 border-2 border-yellow-400 rounded-full animate-pulse"
+              style={"left: #{rem(index * 37, 80) + 10}%; top: #{rem(index * 23, 70) + 15}%;"}
+            >
+            </div>
+          <% end %>
+        </div>
+      </div>
+      
+<!-- Reporting Panel -->
+      <div class="bg-gray-800 rounded-xl border-2 border-red-500 shadow-2xl">
+        <div class="p-4 border-b border-red-500/30">
+          <h2 class="text-xl font-black text-yellow-400 uppercase tracking-wide">
+            🚨 Submit Report
+          </h2>
+        </div>
+
+        <div class="p-4 space-y-4">
+          <.form
+            for={@form}
+            id="report-form"
+            phx-change="validate"
+            phx-submit="save"
+            class="space-y-4"
+          >
+            <!-- Report Type Selection -->
+            <div>
+              <label class="block text-white font-bold text-sm mb-2 uppercase tracking-wide">
+                Report Type
+              </label>
+              <.input
+                field={@form[:type]}
+                type="select"
+                prompt="Choose activity type"
+                options={[
+                  {"🛑 Checkpoint", "checkpoint"},
+                  {"🏠 Raid", "raid"},
+                  {"👮 Patrol", "patrol"},
+                  {"🏢 Detention", "detention"}
+                ]}
+                class="w-full px-4 py-3 bg-gray-700 text-white border-2 border-gray-600 focus:border-red-400 focus:ring-2 focus:ring-red-300 rounded-lg font-bold"
+              />
+            </div>
+            
+<!-- Location -->
+            <div>
+              <label class="block text-white font-bold text-sm mb-2 uppercase tracking-wide">
+                Location
+              </label>
+              <.input
+                field={@form[:location_description]}
+                type="text"
+                placeholder="e.g., I-95 Exit 42, Downtown Main St"
+                class="w-full px-4 py-3 bg-gray-700 text-white placeholder:text-gray-400 border-2 border-gray-600 focus:border-red-400 focus:ring-2 focus:ring-red-300 rounded-lg font-medium"
+              />
+            </div>
+            
+<!-- Description -->
+            <div>
+              <label class="block text-white font-bold text-sm mb-2 uppercase tracking-wide">
+                Details (Optional)
+              </label>
+              <.input
+                field={@form[:description]}
+                type="textarea"
+                placeholder="Additional details, number of vehicles, etc."
+                class="w-full px-4 py-3 bg-gray-700 text-white placeholder:text-gray-400 border-2 border-gray-600 focus:border-red-400 focus:ring-2 focus:ring-red-300 rounded-lg font-medium h-20"
+              />
+            </div>
+            
+<!-- Hidden coordinates -->
+            <.input field={@form[:latitude]} type="hidden" />
+            <.input field={@form[:longitude]} type="hidden" />
+            
+<!-- Submit Button -->
+            <button
+              type="submit"
+              class="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black py-4 px-6 rounded-lg text-lg uppercase tracking-wider transition-all duration-200 transform hover:scale-105 shadow-lg border-2 border-yellow-400"
+            >
+              📍 Submit Emergency Report
+            </button>
+          </.form>
+        </div>
+      </div>
+    </div>
+    
+<!-- Recent Reports -->
+    <div class="max-w-7xl mx-auto px-6 pb-6">
+      <div class="bg-gray-800 rounded-xl border-2 border-red-500 shadow-2xl">
+        <div class="p-4 border-b border-red-500/30">
+          <h2 class="text-xl font-black text-yellow-400 uppercase tracking-wide">
+            📊 Recent Reports
+          </h2>
+        </div>
+
+        <div class="p-4">
+          <%= if @reports_empty? do %>
+            <div class="text-center py-8 text-gray-400">
+              <div class="text-4xl mb-2">📍</div>
+              <p class="font-bold">No active reports</p>
+              <p class="text-sm">Submit the first report to help your community</p>
+            </div>
+          <% else %>
+            <div class="space-y-3">
+              <%= for report <- @reports do %>
+                <div class="bg-gray-700 border-l-4 border-red-500 p-4 rounded-r-lg">
+                  <div class="flex justify-between items-start">
+                    <div>
+                      <div class="flex items-center space-x-2 mb-1">
+                        <span class="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold uppercase">
+                          {report_type_display(report.type)}
+                        </span>
+                        <span class="text-yellow-400 text-sm font-bold">
+                          ⏰ {format_time_ago(report.inserted_at)}
+                        </span>
+                      </div>
+                      <%= if report.location_description do %>
+                        <p class="text-white font-medium">{report.location_description}</p>
+                      <% end %>
+                      <%= if report.description do %>
+                        <p class="text-gray-300 text-sm mt-1">{report.description}</p>
+                      <% end %>
+                    </div>
+                    <button
+                      phx-click="deactivate_report"
+                      phx-value-id={report.id}
+                      class="text-gray-400 hover:text-white text-sm font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layouts.app>
