@@ -23,7 +23,7 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   @impl true
-  def handle_event("search_address", %{"value" => query}, socket) when byte_size(query) >= 3 do
+  def handle_event("search_address", %{"value" => query}, socket) when byte_size(query) >= 4 do
     # Use Nominatim (OpenStreetMap) for free geocoding
     suggestions = search_addresses(query)
 
