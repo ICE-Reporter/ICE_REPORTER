@@ -51,8 +51,27 @@ let leafletMap = null;
 let reportPopup = null;
 
 // Initialize Leaflet when the page loads
-window.addEventListener("DOMContentLoaded", () => {
-  initializeLeaflet();
+// LiveView hook for map initialization
+const Hooks = {
+  MapContainer: {
+    mounted() {
+      console.log("🗺️ Map hook mounted!");
+      initializeLeaflet();
+    },
+    destroyed() {
+      if (leafletMap) {
+        leafletMap.remove();
+        leafletMap = null;
+      }
+    },
+  },
+};
+
+// Add hooks to LiveSocket
+const liveSocket = new LiveSocket("/live", Socket, {
+  longPollFallbackMs: 2500,
+  params: { _csrf_token: csrfToken },
+  hooks: Hooks,
 });
 
 function initializeLeaflet() {
