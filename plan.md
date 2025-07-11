@@ -3,20 +3,20 @@
 ## High-Level Plan
 - [x] Generate a Phoenix LiveView project called `ice_reporter`
 - [x] Start the server and create our plan.md
-- [ ] Replace the default home page with urgent & bold emergency alert style static mockup
-- [ ] Implement the core reporting functionality:
-  - [ ] Create ReportLive with real-time map integration using JavaScript
-  - [ ] Add Report schema/migration for storing reports (location, type, timestamp, description)
-  - [ ] Implement the Reports context for CRUD operations
-  - [ ] Create the report template with interactive map and reporting form
-- [ ] Add real-time features with PubSub for live report updates across all users
-- [ ] Update layouts to match our urgent & bold emergency alert design:
-  - [ ] Update root.html.heex with emergency theme (forced dark theme for urgency)
-  - [ ] Update <Layouts.app> component with bold red/orange alert styling
-  - [ ] Update app.css with emergency alert color scheme and bold typography
-- [ ] Update router with our new routes (remove placeholder home route)
-- [ ] Visit the app to verify everything works
-- [ ] Reserve 2-3 steps for debugging and polish
+- [x] Replace the default home page with urgent & bold emergency alert style static mockup
+- [x] Implement the core reporting functionality:
+  - [x] Create ReportLive with real-time map integration using JavaScript
+  - [x] Add Report schema/migration for storing reports (location, type, timestamp, description)
+  - [x] Implement the Reports context for CRUD operations
+  - [x] Create the report template with interactive map and reporting form
+- [x] Add real-time features with PubSub for live report updates across all users
+- [x] Update layouts to match our urgent & bold emergency alert design:
+  - [x] Update root.html.heex with emergency theme (forced dark theme for urgency)
+  - [x] Update <Layouts.app> component with bold red/orange alert styling
+  - [x] Update app.css with emergency alert color scheme and bold typography
+- [x] Update router with our new routes (remove placeholder home route)
+- [x] Visit the app to verify everything works
+- [x] Reserve 2-3 steps for debugging and polish
 
 ## Design Specifications - Urgent & Bold Emergency Alert Style
 - **Color Scheme**: Dark background with bright red/orange accents for alerts
@@ -31,3 +31,4 @@
 - JavaScript map integration (Leaflet or similar)
 - SQLite database for report storage
 - Emergency alert styling with high contrast ratios
+
