@@ -33,7 +33,7 @@ defmodule IceReporterWeb.ReportLive do
   @impl true
   def handle_event("save", %{"report" => report_params}, socket) do
     case Reports.create_report(report_params) do
-      {:ok, report} ->
+      {:ok, _report} ->
         {:noreply,
          socket
          |> assign(:form, to_form(Report.changeset(%Report{}, %{})))
