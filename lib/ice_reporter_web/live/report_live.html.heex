@@ -1,120 +1,141 @@
 <Layouts.app flash={@flash}>
-  <div class="min-h-screen bg-gradient-to-br from-gray-900 to-red-900">
-    <!-- Emergency Header -->
-    <div class="bg-gradient-to-r from-red-600 to-orange-500 px-4 py-3 text-center shadow-lg border-b-4 border-yellow-400">
-      <h1 class="text-3xl font-black text-white uppercase tracking-wider drop-shadow-lg">
-        🚨 ICE Reporter 🚨
-      </h1>
-      <p class="text-lg text-white/90 font-bold mt-1">
-        Real-Time Immigration Enforcement Alert System
-      </p>
+  <div class="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-red-500 relative overflow-hidden">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0 opacity-20">
+      <div class="absolute top-10 left-10 w-32 h-32 bg-white rounded-full animate-pulse"></div>
+      <div class="absolute top-32 right-20 w-20 h-20 bg-blue-200 rounded-full animate-bounce">
+      </div>
+      <div class="absolute bottom-20 left-32 w-24 h-24 bg-red-200 rounded-full animate-pulse">
+      </div>
     </div>
     
-<!-- Warning Banner -->
-    <div class="bg-yellow-400 text-black px-4 py-2 text-center font-bold text-sm">
-      ⚠️ ANONYMOUS REPORTING SYSTEM - YOUR SAFETY IS PRIORITY ⚠️
+<!-- ICEE Header -->
+    <div class="bg-gradient-to-r from-blue-500 to-red-500 px-4 py-4 text-center shadow-xl border-b-4 border-white relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse">
+      </div>
+      <div class="relative z-10">
+        <div class="text-6xl mb-2 animate-bounce">🐻‍❄️</div>
+        <h1 class="text-4xl font-black text-white uppercase tracking-wider drop-shadow-lg">
+          ICE Reporter
+        </h1>
+        <p class="text-lg text-white/95 font-bold mt-1">
+          Cool Community Alert System
+        </p>
+      </div>
+    </div>
+    
+<!-- Chill Safety Banner -->
+    <div class="bg-gradient-to-r from-white to-blue-100 text-blue-600 px-4 py-3 text-center font-black text-sm border-b-2 border-red-400">
+      🧊 STAY COOL & ANONYMOUS - COMMUNITY SAFETY FIRST ❄️
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto relative z-10">
       <!-- Map Section -->
-      <div class="lg:col-span-2 bg-gray-800 rounded-xl border-2 border-red-500 shadow-2xl">
-        <div class="p-4 border-b border-red-500/30">
-          <h2 class="text-xl font-black text-yellow-400 uppercase tracking-wide">
-            📍 Live Activity Map
+      <div class="lg:col-span-2 bg-gradient-to-br from-white/90 to-blue-50/90 rounded-3xl border-4 border-white shadow-2xl backdrop-blur-md">
+        <div class="p-4 border-b-2 border-blue-200/50">
+          <h2 class="text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2">
+            🗺️ Chill Map
+            <span class="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">LIVE</span>
           </h2>
         </div>
-        <div id="map-container" class="h-96 lg:h-[500px] relative bg-gray-700 rounded-b-xl">
-          <!-- Map placeholder with simulated pins -->
+        <div
+          id="map-container"
+          class="h-96 lg:h-[500px] relative bg-gradient-to-br from-blue-100 to-red-100 rounded-b-3xl"
+        >
+          <!-- Map placeholder with icy feel -->
           <div class="absolute inset-0 flex items-center justify-center">
-            <div class="text-center text-white">
-              <div class="text-6xl mb-4">🗺️</div>
-              <p class="text-lg font-bold">Interactive Map Loading...</p>
-              <p class="text-sm opacity-75">Click to place reports</p>
+            <div class="text-center text-blue-600">
+              <div class="text-8xl mb-4 animate-pulse">🗺️</div>
+              <p class="text-xl font-black">Interactive Cool Map</p>
+              <p class="text-sm opacity-75 font-bold">Click anywhere to drop a pin! ❄️</p>
             </div>
           </div>
           
 <!-- Simulated report pins -->
           <%= for {report, index} <- Enum.with_index(@reports) do %>
             <div
-              class="absolute w-6 h-6 bg-red-500 border-2 border-yellow-400 rounded-full animate-pulse"
+              class="absolute w-8 h-8 bg-gradient-to-br from-red-400 to-blue-500 border-3 border-white rounded-full animate-pulse shadow-lg"
               style={"left: #{rem(index * 37, 80) + 10}%; top: #{rem(index * 23, 70) + 15}%;"}
             >
+              <div class="absolute inset-0 bg-white/30 rounded-full animate-ping"></div>
             </div>
           <% end %>
         </div>
       </div>
       
 <!-- Reporting Panel -->
-      <div class="bg-gray-800 rounded-xl border-2 border-red-500 shadow-2xl">
-        <div class="p-4 border-b border-red-500/30">
-          <h2 class="text-xl font-black text-yellow-400 uppercase tracking-wide">
-            🚨 Submit Report
+      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-3xl border-4 border-white shadow-2xl backdrop-blur-md">
+        <div class="p-4 border-b-2 border-blue-200/50">
+          <h2 class="text-2xl font-black text-blue-600 uppercase tracking-wide text-center">
+            🧊 Drop a Report
           </h2>
         </div>
 
-        <div class="p-4 space-y-4">
+        <div class="p-6 space-y-4">
           <.form
             for={@form}
             id="report-form"
             phx-change="validate"
             phx-submit="save"
-            class="space-y-4"
+            class="space-y-6"
           >
             <!-- Report Type Selection -->
             <div>
-              <label class="block text-white font-bold text-sm mb-2 uppercase tracking-wide">
-                Report Type
+              <label class="block text-blue-700 font-black text-sm mb-3 uppercase tracking-wide">
+                ❄️ Activity Type
               </label>
               <.input
                 field={@form[:type]}
                 type="select"
-                prompt="Choose activity type"
+                prompt="Choose what you spotted..."
                 options={[
                   {"🛑 Checkpoint", "checkpoint"},
-                  {"🏠 Raid", "raid"},
+                  {"🏠 Operation", "raid"},
                   {"👮 Patrol", "patrol"},
-                  {"🏢 Detention", "detention"}
+                  {"🏢 Facility", "detention"}
                 ]}
-                class="w-full px-4 py-3 bg-gray-700 text-white border-2 border-gray-600 focus:border-red-400 focus:ring-2 focus:ring-red-300 rounded-lg font-bold"
+                class="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-2xl font-bold text-lg shadow-inner"
               />
             </div>
             
 <!-- Location -->
             <div>
-              <label class="block text-white font-bold text-sm mb-2 uppercase tracking-wide">
-                Location
+              <label class="block text-blue-700 font-black text-sm mb-3 uppercase tracking-wide">
+                📍 Where's this happening?
               </label>
               <.input
                 field={@form[:location_description]}
                 type="text"
-                placeholder="e.g., I-95 Exit 42, Downtown Main St"
-                class="w-full px-4 py-3 bg-gray-700 text-white placeholder:text-gray-400 border-2 border-gray-600 focus:border-red-400 focus:ring-2 focus:ring-red-300 rounded-lg font-medium"
+                placeholder="e.g., Main St & 5th Ave, Highway 95..."
+                class="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 placeholder:text-blue-400 border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-2xl font-bold shadow-inner"
               />
             </div>
             
 <!-- Description -->
             <div>
-              <label class="block text-white font-bold text-sm mb-2 uppercase tracking-wide">
-                Details (Optional)
+              <label class="block text-blue-700 font-black text-sm mb-3 uppercase tracking-wide">
+                💬 Extra Details (Optional)
               </label>
               <.input
                 field={@form[:description]}
                 type="textarea"
-                placeholder="Additional details, number of vehicles, etc."
-                class="w-full px-4 py-3 bg-gray-700 text-white placeholder:text-gray-400 border-2 border-gray-600 focus:border-red-400 focus:ring-2 focus:ring-red-300 rounded-lg font-medium h-20"
+                placeholder="How many vehicles? What did you see? Stay safe!"
+                class="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 placeholder:text-blue-400 border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-2xl font-bold h-24 shadow-inner"
               />
             </div>
             
 <!-- Hidden coordinates -->
-            <input type="hidden" name="report[latitude]" value={@form[:latitude].value} />
-            <input type="hidden" name="report[longitude]" value={@form[:longitude].value} />
+            <.input field={@form[:latitude]} type="hidden" />
+            <.input field={@form[:longitude]} type="hidden" />
             
 <!-- Submit Button -->
             <button
               type="submit"
-              class="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-black py-4 px-6 rounded-lg text-lg uppercase tracking-wider transition-all duration-200 transform hover:scale-105 shadow-lg border-2 border-yellow-400"
+              class="w-full bg-gradient-to-r from-red-500 to-blue-500 hover:from-red-600 hover:to-blue-600 text-white font-black py-4 px-6 rounded-2xl text-xl uppercase tracking-wider transition-all duration-300 transform hover:scale-105 shadow-xl border-3 border-white relative overflow-hidden group"
             >
-              📍 Submit Emergency Report
+              <span class="relative z-10">🧊 Submit Cool Report ❄️</span>
+              <div class="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              </div>
             </button>
           </.form>
         </div>
@@ -122,48 +143,57 @@
     </div>
     
 <!-- Recent Reports -->
-    <div class="max-w-7xl mx-auto px-6 pb-6">
-      <div class="bg-gray-800 rounded-xl border-2 border-red-500 shadow-2xl">
-        <div class="p-4 border-b border-red-500/30">
-          <h2 class="text-xl font-black text-yellow-400 uppercase tracking-wide">
-            📊 Recent Reports
+    <div class="max-w-7xl mx-auto px-6 pb-8 relative z-10">
+      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-3xl border-4 border-white shadow-2xl backdrop-blur-md">
+        <div class="p-4 border-b-2 border-blue-200/50">
+          <h2 class="text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2">
+            📊 Recent Cool Reports
+            <span class="text-sm bg-gradient-to-r from-red-400 to-blue-400 text-white px-2 py-1 rounded-full">
+              FRESH
+            </span>
           </h2>
         </div>
 
-        <div class="p-4">
+        <div class="p-6">
           <%= if @reports_empty? do %>
-            <div class="text-center py-8 text-gray-400">
-              <div class="text-4xl mb-2">📍</div>
-              <p class="font-bold">No active reports</p>
-              <p class="text-sm">Submit the first report to help your community</p>
+            <div class="text-center py-12 text-blue-500">
+              <div class="text-8xl mb-4 animate-bounce">🧊</div>
+              <p class="text-xl font-black">No reports yet!</p>
+              <p class="text-lg font-bold opacity-75">
+                Be the first to help your community stay cool! ❄️
+              </p>
             </div>
           <% else %>
-            <div class="space-y-3">
+            <div class="space-y-4">
               <%= for report <- @reports do %>
-                <div class="bg-gray-700 border-l-4 border-red-500 p-4 rounded-r-lg">
-                  <div class="flex justify-between items-start">
+                <div class="bg-gradient-to-r from-blue-50 to-red-50 border-l-6 border-red-400 p-4 rounded-r-2xl shadow-lg relative overflow-hidden">
+                  <div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/30">
+                  </div>
+                  <div class="relative z-10 flex justify-between items-start">
                     <div>
-                      <div class="flex items-center space-x-2 mb-1">
-                        <span class="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold uppercase">
+                      <div class="flex items-center space-x-3 mb-2">
+                        <span class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-3 py-1 rounded-full text-sm font-black uppercase">
                           {report_type_display(report.type)}
                         </span>
-                        <span class="text-yellow-400 text-sm font-bold">
-                          ⏰ {format_time_ago(report.inserted_at)}
+                        <span class="text-blue-600 text-sm font-black flex items-center gap-1">
+                          ❄️ {format_time_ago(report.inserted_at)}
                         </span>
                       </div>
                       <%= if report.location_description do %>
-                        <p class="text-white font-medium">{report.location_description}</p>
+                        <p class="text-blue-700 font-bold text-lg">
+                          {report.location_description}
+                        </p>
                       <% end %>
                       <%= if report.description do %>
-                        <p class="text-gray-300 text-sm mt-1">{report.description}</p>
+                        <p class="text-blue-600 text-sm mt-1 font-medium">{report.description}</p>
                       <% end %>
                     </div>
                     <button
                       phx-click="deactivate_report"
                       phx-value-id={report.id}
-                      class="text-gray-400 hover:text-white text-sm font-bold"
+                      class="text-blue-400 hover:text-red-500 text-lg font-black transition-colors duration-200"
                     >
-                      ✕
+                      ❌
                     </button>
                   </div>
                 </div>
