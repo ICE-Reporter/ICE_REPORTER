@@ -55,25 +55,29 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   @impl true
-  @impl true\
-  def handle_event("map_report", %{"latitude" => lat, "longitude" => lng, "type" => type}, socket) do\
-    report_params = %{\
-      "latitude" => lat,\
-      "longitude" => lng,\
-      "type" => type\
-    }\
-\
-    case Reports.create_report(report_params) do\
-      {:ok, _report} ->\
-        {:noreply,\
-         socket\
-         |> assign(:reports_empty?, false)\
-         |> put_flash(:info, "Cool report submitted! Thanks for keeping the community informed! ❄️")}\
-\
-      {:error, _changeset} ->\
-        {:noreply, put_flash(socket, :error, "Oops! Couldn't submit that report. Try again!")}\
-    end\
+  def handle_event("map_report", %{"latitude" => lat, "longitude" => lng, "type" => type}, socket) do
+    report_params = %{
+      "latitude" => lat,
+      "longitude" => lng,
+      "type" => type
+    }
+
+    case Reports.create_report(report_params) do
+      {:ok, _report} ->
+        {:noreply,
+         socket
+         |> assign(:reports_empty?, false)
+         |> put_flash(
+           :info,
+           "Cool report submitted! Thanks for keeping the community informed! ❄️"
+         )}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Oops! Couldn't submit that report. Try again!")}
+    end
   end
+
+  @impl true
   def handle_event("deactivate_report", %{"id" => id}, socket) do
     report = Reports.get_report!(id)
     {:ok, _} = Reports.deactivate_report(report)
