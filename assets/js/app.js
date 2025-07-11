@@ -4,7 +4,7 @@
 
 // You can include dependencies in two ways.
 //
-// The simplest option is to put them in assets/vendor and
+// The simplest option is to put them in assets vendor and
 // import them using relative paths:
 //
 //     import "../vendor/some-package.js"
@@ -31,6 +31,7 @@ const csrfToken = document
 // Leaflet integration for ICE Reporter
 let leafletMap = null;
 let reportPopup = null;
+let reportMarkers = new Map(); // Track markers by report ID
 
 // LiveView hook for map initialization
 const Hooks = {
@@ -43,6 +44,7 @@ const Hooks = {
       if (leafletMap) {
         leafletMap.remove();
         leafletMap = null;
+        reportMarkers.clear();
       }
     },
   },
@@ -59,6 +61,28 @@ const liveSocket = new LiveSocket("/live", Socket, {
 topbar.config({ barColors: { 0: "#29d" }, shadowColor: "rgba(0, 0, 0, .3)" });
 window.addEventListener("phx:page-loading-start", (_info) => topbar.show(300));
 window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
+
+// Listen for LiveView events
+window.addEventListener("phx:load_existing_reports", (e) => {
+  console.log("📊 Loading existing reports:", e.detail.reports);
+  loadExistingReports(e.detail.reports);
+});
+
+window.addEventListener("phx:add_report_marker", (e) => {
+  console.log("🧊 Adding new report marker:", e.detail);
+  addReportMarker(
+    e.detail.latitude,
+    e.detail.longitude,
+    e.detail.type,
+    false,
+    e.detail.id,
+  );
+});
+
+window.addEventListener("phx:remove_report_marker", (e) => {
+  console.log("❌ Removing report marker:", e.detail.id);
+  removeReportMarker(e.detail.id);
+});
 
 // connect if there are any LiveViews on the page
 liveSocket.connect();
@@ -80,6 +104,7 @@ function initializeLeaflet() {
   if (leafletMap) {
     leafletMap.remove();
     leafletMap = null;
+    reportMarkers.clear();
   }
 
   console.log("🗺️ Initializing Leaflet map...");
@@ -113,7 +138,7 @@ function initializeLeaflet() {
 
   console.log("✅ Leaflet map initialized successfully!");
 
-  // Expose map globally for submitReport function
+  // Expose map globally
   window.leafletMap = leafletMap;
 }
 
@@ -175,7 +200,7 @@ window.submitReport = function (lat, lng, type) {
 };
 
 // Function to add report markers with emojis
-function addReportMarker(lat, lng, type, isTemporary = false) {
+function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
   if (!leafletMap) return;
 
   const emoji = getEmojiForType(type);
@@ -211,7 +236,21 @@ function addReportMarker(lat, lng, type, isTemporary = false) {
     </div>
   `);
 
+  // Store marker if it has a report ID
+  if (reportId) {
+    reportMarkers.set(reportId, marker);
+  }
+
   return marker;
+}
+
+// Function to remove report marker
+function removeReportMarker(reportId) {
+  if (reportMarkers.has(reportId)) {
+    const marker = reportMarkers.get(reportId);
+    leafletMap.removeLayer(marker);
+    reportMarkers.delete(reportId);
+  }
 }
 
 function getEmojiForType(type) {
@@ -260,13 +299,19 @@ function getTypeDisplayName(type) {
 }
 
 // Function to load existing reports on the map
-window.loadExistingReports = function (reports) {
+function loadExistingReports(reports) {
   if (!leafletMap) return;
 
   reports.forEach((report) => {
-    addReportMarker(report.latitude, report.longitude, report.type, false);
+    addReportMarker(
+      report.latitude,
+      report.longitude,
+      report.type,
+      false,
+      report.id,
+    );
   });
-};
+}
 
 // The lines below enable quality of life phoenix_live_reload
 // development features:
