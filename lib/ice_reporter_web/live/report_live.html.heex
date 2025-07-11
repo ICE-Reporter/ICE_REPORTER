@@ -106,8 +106,8 @@
             </div>
             
 <!-- Hidden coordinates -->
-            <.input field={@form[:latitude]} type="hidden" />
-            <.input field={@form[:longitude]} type="hidden" />
+            <input type="hidden" name="report[latitude]" value={@form[:latitude].value} />
+            <input type="hidden" name="report[longitude]" value={@form[:longitude].value} />
             
 <!-- Submit Button -->
             <button
