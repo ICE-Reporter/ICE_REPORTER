@@ -3,35 +3,73 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ICE Reporter - Emergency Alert System</title>
+    <title>ICE Reporter - Cool Community Alert System</title>
     <style>
       body {
-          background: linear-gradient(135deg, #1a1a1a 0%, #2d1b1b 100%);
-          font-family: 'Arial Black', Arial, sans-serif;
+          background: linear-gradient(135deg, #0066cc 0%, #ff3366 50%, #0066cc 100%);
+          background-size: 400% 400%;
+          animation: iceGradient 8s ease-in-out infinite;
+          font-family: 'Comic Sans MS', 'Arial Black', Arial, sans-serif;
           margin: 0;
           padding: 0;
           color: #ffffff;
           min-height: 100vh;
       }
-      .emergency-header {
-          background: linear-gradient(90deg, #dc2626 0%, #ea580c 100%);
-          padding: 1rem;
-          text-align: center;
-          box-shadow: 0 4px 20px rgba(220, 38, 38, 0.5);
-          border-bottom: 3px solid #fbbf24;
+      @keyframes iceGradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
       }
-      .alert-title {
-          font-size: 2.5rem;
+      .icee-header {
+          background: linear-gradient(90deg, #0066cc 0%, #ff3366 50%, #0066cc 100%);
+          padding: 1.5rem;
+          text-align: center;
+          box-shadow: 0 8px 32px rgba(0,102,204,0.6);
+          border-bottom: 4px solid #ffffff;
+          position: relative;
+          overflow: hidden;
+      }
+      .icee-header::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+          animation: shine 3s infinite;
+      }
+      @keyframes shine {
+          0% { left: -100%; }
+          100% { left: 100%; }
+      }
+      .icee-title {
+          font-size: 3rem;
           font-weight: 900;
           text-transform: uppercase;
           letter-spacing: 0.1em;
           margin: 0;
-          text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+          text-shadow: 3px 3px 6px rgba(0,0,0,0.7);
+          background: linear-gradient(45deg, #ffffff, #ccecff);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
       }
-      .alert-subtitle {
-          font-size: 1.2rem;
+      .icee-subtitle {
+          font-size: 1.3rem;
           margin: 0.5rem 0 0 0;
           opacity: 0.95;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+      }
+      .polar-bear {
+          font-size: 4rem;
+          display: inline-block;
+          animation: bounce 2s infinite;
+      }
+      @keyframes bounce {
+          0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+          40% { transform: translateY(-10px); }
+          60% { transform: translateY(-5px); }
       }
       .main-container {
           display: grid;
@@ -40,26 +78,27 @@
           padding: 2rem;
           max-width: 1400px;
           margin: 0 auto;
-          min-height: calc(100vh - 120px);
+          min-height: calc(100vh - 150px);
       }
       .map-section {
-          background: #262626;
-          border-radius: 12px;
-          border: 2px solid #dc2626;
+          background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(0,102,204,0.3) 100%);
+          border-radius: 20px;
+          border: 3px solid #ffffff;
           position: relative;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+          box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+          backdrop-filter: blur(10px);
       }
       .map-placeholder {
           width: 100%;
           height: 100%;
-          background: linear-gradient(45deg, #374151 25%, transparent 25%, transparent 75%, #374151 75%, #374151),
-                      linear-gradient(45deg, #374151 25%, transparent 25%, transparent 75%, #374151 75%, #374151);
-          background-size: 20px 20px;
-          background-position: 0 0, 10px 10px;
+          background: linear-gradient(45deg, #e6f3ff 25%, transparent 25%, transparent 75%, #e6f3ff 75%, #e6f3ff),
+                      linear-gradient(45deg, #e6f3ff 25%, transparent 25%, transparent 75%, #e6f3ff 75%, #e6f3ff);
+          background-size: 30px 30px;
+          background-position: 0 0, 15px 15px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 10px;
+          border-radius: 17px;
           position: relative;
           min-height: 500px;
       }
@@ -69,133 +108,173 @@
           left: 50%;
           transform: translate(-50%, -50%);
           text-align: center;
-          background: rgba(0,0,0,0.8);
+          background: linear-gradient(135deg, rgba(0,102,204,0.9), rgba(255,51,102,0.9));
           padding: 2rem;
-          border-radius: 8px;
-          border: 2px solid #dc2626;
+          border-radius: 20px;
+          border: 3px solid #ffffff;
+          color: white;
+          backdrop-filter: blur(10px);
       }
       .report-pins {
           position: absolute;
-          width: 20px;
-          height: 20px;
-          background: #dc2626;
+          width: 24px;
+          height: 24px;
+          background: linear-gradient(135deg, #ff3366, #0066cc);
           border-radius: 50%;
-          border: 3px solid #fbbf24;
-          animation: pulse 2s infinite;
+          border: 3px solid #ffffff;
+          animation: icePulse 2s infinite;
+          box-shadow: 0 0 20px rgba(255,51,102,0.8);
       }
-      .pin-1 { top: 30%; left: 40%; }
-      .pin-2 { top: 60%; left: 70%; }
-      .pin-3 { top: 45%; left: 25%; }
-      @keyframes pulse {
-          0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
-          70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+      .pin-1 { top: 25%; left: 35%; }
+      .pin-2 { top: 65%; left: 75%; }
+      .pin-3 { top: 40%; left: 20%; }
+      @keyframes icePulse {
+          0% { 
+              box-shadow: 0 0 0 0 rgba(255,51,102,0.8), 0 0 20px rgba(255,51,102,0.6);
+              transform: scale(1);
+          }
+          70% { 
+              box-shadow: 0 0 0 15px rgba(255,51,102,0), 0 0 20px rgba(255,51,102,0.6);
+              transform: scale(1.1);
+          }
+          100% { 
+              box-shadow: 0 0 0 0 rgba(255,51,102,0), 0 0 20px rgba(255,51,102,0.6);
+              transform: scale(1);
+          }
       }
       .reporting-panel {
-          background: #262626;
-          border-radius: 12px;
-          border: 2px solid #dc2626;
+          background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(0,102,204,0.2) 100%);
+          border-radius: 20px;
+          border: 3px solid #ffffff;
           padding: 2rem;
-          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+          box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+          backdrop-filter: blur(15px);
       }
       .panel-title {
-          font-size: 1.8rem;
+          font-size: 2rem;
           font-weight: 900;
-          color: #fbbf24;
+          color: #ffffff;
           margin: 0 0 1.5rem 0;
           text-transform: uppercase;
           letter-spacing: 0.05em;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+          text-align: center;
       }
       .report-type {
-          background: #374151;
-          border: 2px solid #6b7280;
-          border-radius: 8px;
-          padding: 1rem;
-          margin: 0.5rem 0;
+          background: linear-gradient(135deg, rgba(255,255,255,0.3), rgba(0,102,204,0.2));
+          border: 2px solid #ffffff;
+          border-radius: 15px;
+          padding: 1.2rem;
+          margin: 0.8rem 0;
           cursor: pointer;
-          transition: all 0.2s;
+          transition: all 0.3s ease;
           color: #ffffff;
           font-weight: bold;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+          backdrop-filter: blur(10px);
       }
       .report-type:hover {
-          background: #dc2626;
-          border-color: #fbbf24;
-          transform: translateY(-2px);
+          background: linear-gradient(135deg, #ff3366, #0066cc);
+          border-color: #ffffff;
+          transform: translateY(-3px) scale(1.02);
+          box-shadow: 0 8px 25px rgba(255,51,102,0.4);
       }
-      .emergency-button {
-          background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-          border: 3px solid #fbbf24;
-          border-radius: 12px;
-          padding: 1rem 2rem;
-          font-size: 1.3rem;
+      .icee-button {
+          background: linear-gradient(135deg, #ff3366 0%, #0066cc 100%);
+          border: 3px solid #ffffff;
+          border-radius: 20px;
+          padding: 1.2rem 2rem;
+          font-size: 1.4rem;
           font-weight: 900;
           color: #ffffff;
           text-transform: uppercase;
           letter-spacing: 0.1em;
           cursor: pointer;
           width: 100%;
-          margin: 1rem 0;
-          transition: all 0.2s;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
-          box-shadow: 0 4px 15px rgba(220, 38, 38, 0.4);
+          margin: 1.5rem 0;
+          transition: all 0.3s ease;
+          text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+          box-shadow: 0 8px 25px rgba(255,51,102,0.4);
+          position: relative;
+          overflow: hidden;
       }
-      .emergency-button:hover {
-          background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+      .icee-button::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+          transition: left 0.5s;
+      }
+      .icee-button:hover::before {
+          left: 100%;
+      }
+      .icee-button:hover {
+          background: linear-gradient(135deg, #0066cc 0%, #ff3366 100%);
           transform: translateY(-3px);
-          box-shadow: 0 6px 20px rgba(220, 38, 38, 0.6);
+          box-shadow: 0 12px 35px rgba(0,102,204,0.6);
       }
       .recent-reports {
           margin-top: 2rem;
       }
       .report-item {
-          background: #1f2937;
-          border-left: 4px solid #dc2626;
-          padding: 1rem;
-          margin: 0.5rem 0;
-          border-radius: 0 8px 8px 0;
+          background: linear-gradient(135deg, rgba(255,255,255,0.2), rgba(0,102,204,0.1));
+          border-left: 5px solid #ff3366;
+          border-radius: 0 15px 15px 0;
+          padding: 1.2rem;
+          margin: 0.8rem 0;
+          backdrop-filter: blur(10px);
+          border: 2px solid rgba(255,255,255,0.3);
       }
       .report-time {
-          color: #fbbf24;
+          color: #ffffff;
           font-weight: bold;
-          font-size: 0.9rem;
+          font-size: 1rem;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
       }
       .report-type-badge {
-          background: #dc2626;
+          background: linear-gradient(135deg, #ff3366, #0066cc);
           color: #ffffff;
-          padding: 0.25rem 0.5rem;
-          border-radius: 4px;
-          font-size: 0.8rem;
+          padding: 0.4rem 0.8rem;
+          border-radius: 15px;
+          font-size: 0.9rem;
           font-weight: bold;
           margin: 0.5rem 0;
           display: inline-block;
+          text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+          border: 2px solid #ffffff;
       }
-      .warning-banner {
-          background: #fbbf24;
-          color: #000000;
-          padding: 0.5rem;
+      .safety-banner {
+          background: linear-gradient(90deg, #ffffff 0%, #ccecff 100%);
+          color: #0066cc;
+          padding: 0.8rem;
           text-align: center;
           font-weight: bold;
-          font-size: 0.9rem;
+          font-size: 1rem;
+          border-bottom: 3px solid #ff3366;
       }
       @media (max-width: 768px) {
           .main-container {
               grid-template-columns: 1fr;
               padding: 1rem;
           }
-          .alert-title {
-              font-size: 1.8rem;
+          .icee-title {
+              font-size: 2.2rem;
           }
       }
     </style>
   </head>
   <body>
-    <div class="warning-banner">
-      ⚠️ ANONYMOUS REPORTING SYSTEM - YOUR SAFETY IS PRIORITY ⚠️
+    <div class="safety-banner">
+      🐻‍❄️ COOL & ANONYMOUS REPORTING - STAY CHILL & STAY SAFE 🐻‍❄️
     </div>
 
-    <header class="emergency-header">
-      <h1 class="alert-title">🚨 ICE Reporter 🚨</h1>
-      <p class="alert-subtitle">Real-Time Immigration Enforcement Alert System</p>
+    <header class="icee-header">
+      <div class="polar-bear">🐻‍❄️</div>
+      <h1 class="icee-title">ICE Reporter</h1>
+      <p class="icee-subtitle">Community Cool Alert System</p>
     </header>
 
     <div class="main-container">
@@ -205,63 +284,71 @@
           <div class="report-pins pin-2"></div>
           <div class="report-pins pin-3"></div>
           <div class="map-overlay">
-            <h3 style="margin: 0 0 1rem 0; color: #fbbf24;">LIVE ACTIVITY MAP</h3>
-            <p style="margin: 0; font-size: 0.9rem;">
-              Interactive map will show real-time ICE activity reports
+            <h3 style="margin: 0 0 1rem 0; color: #ffffff; font-size: 1.5rem;">🗺️ CHILL MAP</h3>
+            <p style="margin: 0; font-size: 1rem;">
+              Interactive map shows community reports
             </p>
-            <p style="margin: 0.5rem 0 0 0; font-size: 0.8rem; opacity: 0.8;">
-              Red pins indicate recent reports
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; opacity: 0.9;">
+              Blue-red pins show recent activity
             </p>
           </div>
         </div>
       </div>
 
       <div class="reporting-panel">
-        <h2 class="panel-title">🚨 Report Activity</h2>
+        <h2 class="panel-title">🧊 Report Activity</h2>
 
         <div class="report-type">
           <strong>🛑 CHECKPOINT</strong> <br />
-          <small>Border patrol or ICE checkpoint spotted</small>
+          <small>Checkpoint activity spotted</small>
         </div>
 
         <div class="report-type">
-          <strong>🏠 RAID</strong> <br />
-          <small>Immigration raid in progress</small>
+          <strong>🏠 OPERATION</strong> <br />
+          <small>Operation in progress</small>
         </div>
 
         <div class="report-type">
           <strong>👮 PATROL</strong> <br />
-          <small>Increased ICE patrol activity</small>
+          <small>Increased patrol activity</small>
         </div>
 
         <div class="report-type">
-          <strong>🏢 DETENTION</strong> <br />
-          <small>Detention center activity</small>
+          <strong>🏢 FACILITY</strong> <br />
+          <small>Facility activity</small>
         </div>
 
-        <button class="emergency-button">
-          📍 SUBMIT REPORT
+        <button class="icee-button">
+          🧊 SUBMIT COOL REPORT
         </button>
 
         <div class="recent-reports">
-          <h3 style="color: #fbbf24; margin: 0 0 1rem 0;">Recent Reports</h3>
+          <h3 style="color: #ffffff; margin: 0 0 1rem 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);">
+            Recent Reports
+          </h3>
 
           <div class="report-item">
-            <div class="report-time">⏰ 12 minutes ago</div>
+            <div class="report-time">❄️ 15 minutes ago</div>
             <div class="report-type-badge">CHECKPOINT</div>
-            <div>I-95 Exit 42, heavy activity</div>
+            <div style="color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);">
+              Highway 95 area, stay cool
+            </div>
           </div>
 
           <div class="report-item">
-            <div class="report-time">⏰ 28 minutes ago</div>
+            <div class="report-time">❄️ 32 minutes ago</div>
             <div class="report-type-badge">PATROL</div>
-            <div>Downtown area, multiple vehicles</div>
+            <div style="color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);">
+              Downtown area, multiple vehicles
+            </div>
           </div>
 
           <div class="report-item">
-            <div class="report-time">⏰ 1 hour ago</div>
-            <div class="report-type-badge">RAID</div>
-            <div>Residential area, avoid Main St</div>
+            <div class="report-time">❄️ 1 hour ago</div>
+            <div class="report-type-badge">OPERATION</div>
+            <div style="color: #ffffff; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);">
+              Business district, be aware
+            </div>
           </div>
         </div>
       </div>
