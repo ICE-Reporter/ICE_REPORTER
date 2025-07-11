@@ -28,13 +28,35 @@
     <div class="bg-gradient-to-r from-white to-blue-100 text-blue-600 px-4 py-3 text-center font-black text-sm border-b-2 border-red-400">
       🧊 STAY COOL & ANONYMOUS - COMMUNITY SAFETY FIRST ❄️
     </div>
+    
+<!-- Address Search Bar -->
+    <div class="max-w-2xl mx-auto px-6 py-4 relative z-10">
+      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-2xl border-3 border-white shadow-xl backdrop-blur-md p-4">
+        <div class="relative">
+          <input
+            type="text"
+            id="address-search"
+            placeholder="🔍 Search for an address to report activity..."
+            class="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 placeholder:text-blue-400 border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-xl font-bold text-lg shadow-inner"
+            phx-keyup="search_address"
+            phx-debounce="300"
+          />
+          <!-- Autocomplete dropdown -->
+          <div id="address-suggestions" class="absolute top-full left-0 right-0 z-50 hidden">
+            <div class="bg-white border-3 border-blue-200 rounded-xl mt-2 shadow-2xl max-h-60 overflow-y-auto">
+              <!-- Suggestions will be populated here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto relative z-10">
+    <div class="grid grid-cols-1 gap-6 p-6 max-w-7xl mx-auto relative z-10">
       <!-- Map Section -->
-      <div class="lg:col-span-2 bg-gradient-to-br from-white/90 to-blue-50/90 rounded-3xl border-4 border-white shadow-2xl backdrop-blur-md">
+      <div class="bg-gradient-to-br from-white/90 to-blue-50/90 rounded-3xl border-4 border-white shadow-2xl backdrop-blur-md">
         <div class="p-4 border-b-2 border-blue-200/50">
           <h2 class="text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2">
-            🗺️ Chill Map
+            🗺️ Chill Map - Click to Report Activity
             <span class="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">LIVE</span>
           </h2>
         </div>
@@ -44,84 +66,6 @@
           class="h-96 lg:h-[500px] relative bg-gradient-to-br from-blue-100 to-red-100 rounded-b-3xl"
         >
           <!-- Leaflet will render here -->
-        </div>
-      </div>
-      
-<!-- Reporting Panel -->
-      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-3xl border-4 border-white shadow-2xl backdrop-blur-md">
-        <div class="p-4 border-b-2 border-blue-200/50">
-          <h2 class="text-2xl font-black text-blue-600 uppercase tracking-wide text-center">
-            🧊 Drop a Report
-          </h2>
-        </div>
-
-        <div class="p-6 space-y-4">
-          <.form
-            for={@form}
-            id="report-form"
-            phx-change="validate"
-            phx-submit="save"
-            class="space-y-6"
-          >
-            <!-- Report Type Selection -->
-            <div>
-              <label class="block text-blue-700 font-black text-sm mb-3 uppercase tracking-wide">
-                ❄️ Activity Type
-              </label>
-              <.input
-                field={@form[:type]}
-                type="select"
-                prompt="Choose what you spotted..."
-                options={[
-                  {"🛑 Checkpoint", "checkpoint"},
-                  {"🏠 Operation", "raid"},
-                  {"👮 Patrol", "patrol"},
-                  {"🏢 Facility", "detention"}
-                ]}
-                class="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-2xl font-bold text-lg shadow-inner"
-              />
-            </div>
-            
-<!-- Location -->
-            <div>
-              <label class="block text-blue-700 font-black text-sm mb-3 uppercase tracking-wide">
-                📍 Where's this happening?
-              </label>
-              <.input
-                field={@form[:location_description]}
-                type="text"
-                placeholder="e.g., Main St & 5th Ave, Highway 95..."
-                class="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 placeholder:text-blue-400 border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-2xl font-bold shadow-inner"
-              />
-            </div>
-            
-<!-- Description -->
-            <div>
-              <label class="block text-blue-700 font-black text-sm mb-3 uppercase tracking-wide">
-                💬 Extra Details (Optional)
-              </label>
-              <.input
-                field={@form[:description]}
-                type="textarea"
-                placeholder="How many vehicles? What did you see? Stay safe!"
-                class="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 placeholder:text-blue-400 border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-2xl font-bold h-24 shadow-inner"
-              />
-            </div>
-            
-<!-- Hidden coordinates -->
-            <input type="hidden" name="report[latitude]" id="report_latitude" value="" />
-            <input type="hidden" name="report[longitude]" id="report_longitude" value="" />
-            
-<!-- Submit Button -->
-            <button
-              type="submit"
-              class="w-full bg-gradient-to-r from-red-500 to-blue-500 hover:from-red-600 hover:to-blue-600 text-white font-black py-4 px-6 rounded-2xl text-xl uppercase tracking-wider transition-all duration-300 transform hover:scale-105 shadow-xl border-3 border-white relative overflow-hidden group"
-            >
-              <span class="relative z-10">🧊 Submit Cool Report ❄️</span>
-              <div class="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-              </div>
-            </button>
-          </.form>
         </div>
       </div>
     </div>
@@ -144,7 +88,7 @@
               <div class="text-8xl mb-4 animate-bounce">🧊</div>
               <p class="text-xl font-black">No reports yet!</p>
               <p class="text-lg font-bold opacity-75">
-                Be the first to help your community stay cool! ❄️
+                Click on the map to report activity! ❄️
               </p>
             </div>
           <% else %>
@@ -153,32 +97,23 @@
                 <div class="bg-gradient-to-r from-blue-50 to-red-50 border-l-6 border-red-400 p-4 rounded-r-2xl shadow-lg relative overflow-hidden">
                   <div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/30">
                   </div>
-                  <div class="relative z-10 flex justify-between items-start">
-                    <div>
-                      <div class="flex items-center space-x-3 mb-2">
-                        <span class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-3 py-1 rounded-full text-sm font-black uppercase">
-                          {report_type_display(report.type)}
-                        </span>
-                        <span class="text-blue-600 text-sm font-black flex items-center gap-1">
-                          ❄️ {format_time_ago(report.inserted_at)}
-                        </span>
-                      </div>
-                      <%= if report.location_description do %>
-                        <p class="text-blue-700 font-bold text-lg">
-                          {report.location_description}
-                        </p>
-                      <% end %>
-                      <%= if report.description do %>
-                        <p class="text-blue-600 text-sm mt-1 font-medium">{report.description}</p>
-                      <% end %>
+                  <div class="relative z-10">
+                    <div class="flex items-center space-x-3 mb-2">
+                      <span class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-3 py-1 rounded-full text-sm font-black uppercase">
+                        {report_type_display(report.type)}
+                      </span>
+                      <span class="text-blue-600 text-sm font-black flex items-center gap-1">
+                        ❄️ {format_time_ago(report.inserted_at)}
+                      </span>
                     </div>
-                    <button
-                      phx-click="deactivate_report"
-                      phx-value-id={report.id}
-                      class="text-blue-400 hover:text-red-500 text-lg font-black transition-colors duration-200"
-                    >
-                      ❌
-                    </button>
+                    <%= if report.location_description do %>
+                      <p class="text-blue-700 font-bold text-lg">
+                        {report.location_description}
+                      </p>
+                    <% end %>
+                    <%= if report.description do %>
+                      <p class="text-blue-600 text-sm mt-1 font-medium">{report.description}</p>
+                    <% end %>
                   </div>
                 </div>
               <% end %>
