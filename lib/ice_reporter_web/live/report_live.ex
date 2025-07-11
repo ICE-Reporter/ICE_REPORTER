@@ -99,7 +99,13 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   defp format_time_ago(datetime) do
-    diff = DateTime.diff(DateTime.utc_now(), datetime, :minute)
+    datetime_utc =
+      case datetime do
+        %DateTime{} -> datetime
+        %NaiveDateTime{} -> DateTime.from_naive!(datetime, "Etc/UTC")
+      end
+
+    diff = DateTime.diff(DateTime.utc_now(), datetime_utc, :minute)
 
     cond do
       diff < 1 -> "Just now"
