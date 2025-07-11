@@ -15,62 +15,53 @@ defmodule IceReporterWeb.ReportLive do
     {:ok,
      socket
      |> assign(:reports, reports)
-     |> assign(:form, to_form(Report.changeset(%Report{}, %{})))
      |> assign(:selected_location, nil)
      |> assign(:reports_empty?, reports == [])
+     |> assign(:address_search, "")
+     |> assign(:address_suggestions, [])
      |> push_event("load_existing_reports", %{reports: serialize_reports(reports)})}
   end
 
   @impl true
-  def handle_event("validate", %{"report" => report_params}, socket) do
-    changeset =
-      %Report{}
-      |> Report.changeset(report_params)
-      |> Map.put(:action, :validate)
+  def handle_event("search_address", %{"value" => query}, socket) when byte_size(query) >= 3 do
+    # Use Nominatim (OpenStreetMap) for free geocoding
+    suggestions = search_addresses(query)
 
-    {:noreply, assign(socket, form: to_form(changeset))}
-  end
-
-  @impl true
-  def handle_event("save", %{"report" => report_params}, socket) do
-    case Reports.create_report(report_params) do
-      {:ok, report} ->
-        # Broadcast the new report to update maps across all users
-        Phoenix.PubSub.broadcast(
-          IceReporter.PubSub,
-          "reports",
-          {:new_report_with_marker, report}
-        )
-
-        {:noreply,
-         socket
-         |> assign(:form, to_form(Report.changeset(%Report{}, %{})))
-         |> assign(:reports_empty?, false)
-         |> put_flash(
-           :info,
-           "Cool report submitted! Thanks for keeping the community informed! ❄️"
-         )
-         |> push_patch(to: ~p"/reports")}
-
-      {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset))}
-    end
-  end
-
-  @impl true
-  def handle_event("set_location", %{"lat" => lat, "lng" => lng}, socket) do
     {:noreply,
      socket
-     |> assign(:selected_location, %{lat: lat, lng: lng})
-     |> assign(:form, to_form(Report.changeset(%Report{}, %{latitude: lat, longitude: lng})))}
+     |> assign(:address_search, query)
+     |> assign(:address_suggestions, suggestions)
+     |> push_event("show_address_suggestions", %{suggestions: suggestions})}
+  end
+
+  @impl true
+  def handle_event("search_address", %{"value" => query}, socket) do
+    {:noreply,
+     socket
+     |> assign(:address_search, query)
+     |> assign(:address_suggestions, [])
+     |> push_event("hide_address_suggestions", %{})}
+  end
+
+  @impl true
+  def handle_event("select_address", %{"lat" => lat, "lng" => lng, "address" => address}, socket) do
+    {:noreply,
+     socket
+     |> assign(:address_search, address)
+     |> assign(:address_suggestions, [])
+     |> push_event("fly_to_address", %{lat: lat, lng: lng, address: address})}
   end
 
   @impl true
   def handle_event("map_report", %{"latitude" => lat, "longitude" => lng, "type" => type}, socket) do
+    # Get address from coordinates using reverse geocoding
+    address = reverse_geocode(lat, lng)
+
     report_params = %{
       "latitude" => lat,
       "longitude" => lng,
-      "type" => type
+      "type" => type,
+      "location_description" => address
     }
 
     case Reports.create_report(report_params) do
@@ -93,24 +84,6 @@ defmodule IceReporterWeb.ReportLive do
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, "Oops! Couldn't submit that report. Try again!")}
     end
-  end
-
-  @impl true
-  def handle_event("deactivate_report", %{"id" => id}, socket) do
-    report = Reports.get_report!(id)
-    {:ok, _} = Reports.deactivate_report(report)
-
-    # Remove the marker from all maps
-    Phoenix.PubSub.broadcast(
-      IceReporter.PubSub,
-      "reports",
-      {:remove_report_marker, report}
-    )
-
-    {:noreply,
-     socket
-     |> put_flash(:info, "Report deactivated")
-     |> push_patch(to: ~p"/reports")}
   end
 
   @impl true
@@ -159,6 +132,58 @@ defmodule IceReporterWeb.ReportLive do
         type: report.type
       }
     end)
+  end
+
+  defp search_addresses(query) do
+    # Use Nominatim (OpenStreetMap) geocoding service for free address search
+    url = "https://nominatim.openstreetmap.org/search"
+
+    params = %{
+      q: query,
+      format: "json",
+      addressdetails: 1,
+      limit: 5,
+      # Limit to US addresses
+      countrycodes: "us"
+    }
+
+    case Req.get(url, params: params) do
+      {:ok, %{status: 200, body: results}} when is_list(results) ->
+        Enum.map(results, fn result ->
+          %{
+            address: result["display_name"],
+            lat: String.to_float(result["lat"]),
+            lng: String.to_float(result["lon"])
+          }
+        end)
+
+      _ ->
+        []
+    end
+  rescue
+    _ -> []
+  end
+
+  defp reverse_geocode(lat, lng) do
+    # Use Nominatim reverse geocoding to get address from coordinates
+    url = "https://nominatim.openstreetmap.org/reverse"
+
+    params = %{
+      lat: lat,
+      lon: lng,
+      format: "json",
+      addressdetails: 1
+    }
+
+    case Req.get(url, params: params) do
+      {:ok, %{status: 200, body: result}} when is_map(result) ->
+        result["display_name"] || "Unknown Location"
+
+      _ ->
+        "#{lat}, #{lng}"
+    end
+  rescue
+    _ -> "#{lat}, #{lng}"
   end
 
   defp format_time_ago(datetime) do
