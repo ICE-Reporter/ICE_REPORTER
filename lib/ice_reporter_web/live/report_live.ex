@@ -17,7 +17,8 @@ defmodule IceReporterWeb.ReportLive do
      |> assign(:reports, reports)
      |> assign(:form, to_form(Report.changeset(%Report{}, %{})))
      |> assign(:selected_location, nil)
-     |> assign(:reports_empty?, reports == [])}
+     |> assign(:reports_empty?, reports == [])
+     |> push_event("load_existing_reports", %{reports: serialize_reports(reports)})}
   end
 
   @impl true
@@ -33,12 +34,22 @@ defmodule IceReporterWeb.ReportLive do
   @impl true
   def handle_event("save", %{"report" => report_params}, socket) do
     case Reports.create_report(report_params) do
-      {:ok, _report} ->
+      {:ok, report} ->
+        # Broadcast the new report to update maps across all users
+        Phoenix.PubSub.broadcast(
+          IceReporter.PubSub,
+          "reports",
+          {:new_report_with_marker, report}
+        )
+
         {:noreply,
          socket
          |> assign(:form, to_form(Report.changeset(%Report{}, %{})))
          |> assign(:reports_empty?, false)
-         |> put_flash(:info, "Report submitted successfully. Stay safe!")
+         |> put_flash(
+           :info,
+           "Cool report submitted! Thanks for keeping the community informed! ❄️"
+         )
          |> push_patch(to: ~p"/reports")}
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -63,7 +74,14 @@ defmodule IceReporterWeb.ReportLive do
     }
 
     case Reports.create_report(report_params) do
-      {:ok, _report} ->
+      {:ok, report} ->
+        # Broadcast to all users including the marker data
+        Phoenix.PubSub.broadcast(
+          IceReporter.PubSub,
+          "reports",
+          {:new_report_with_marker, report}
+        )
+
         {:noreply,
          socket
          |> assign(:reports_empty?, false)
@@ -82,6 +100,13 @@ defmodule IceReporterWeb.ReportLive do
     report = Reports.get_report!(id)
     {:ok, _} = Reports.deactivate_report(report)
 
+    # Remove the marker from all maps
+    Phoenix.PubSub.broadcast(
+      IceReporter.PubSub,
+      "reports",
+      {:remove_report_marker, report}
+    )
+
     {:noreply,
      socket
      |> put_flash(:info, "Report deactivated")
@@ -96,6 +121,44 @@ defmodule IceReporterWeb.ReportLive do
      socket
      |> assign(:reports, reports)
      |> assign(:reports_empty?, false)}
+  end
+
+  @impl true
+  def handle_info({:new_report_with_marker, report}, socket) do
+    reports = [report | socket.assigns.reports]
+
+    {:noreply,
+     socket
+     |> assign(:reports, reports)
+     |> assign(:reports_empty?, false)
+     |> push_event("add_report_marker", %{
+       latitude: report.latitude,
+       longitude: report.longitude,
+       type: report.type,
+       id: report.id
+     })}
+  end
+
+  @impl true
+  def handle_info({:remove_report_marker, report}, socket) do
+    reports = Enum.reject(socket.assigns.reports, &(&1.id == report.id))
+
+    {:noreply,
+     socket
+     |> assign(:reports, reports)
+     |> assign(:reports_empty?, reports == [])
+     |> push_event("remove_report_marker", %{id: report.id})}
+  end
+
+  defp serialize_reports(reports) do
+    Enum.map(reports, fn report ->
+      %{
+        id: report.id,
+        latitude: report.latitude,
+        longitude: report.longitude,
+        type: report.type
+      }
+    end)
   end
 
   defp format_time_ago(datetime) do
@@ -118,9 +181,9 @@ defmodule IceReporterWeb.ReportLive do
   defp report_type_display(type) do
     case type do
       "checkpoint" -> "🛑 CHECKPOINT"
-      "raid" -> "🏠 RAID"
+      "raid" -> "🏠 OPERATION"
       "patrol" -> "👮 PATROL"
-      "detention" -> "🏢 DETENTION"
+      "detention" -> "🧊 FACILITY"
       _ -> "📍 REPORT"
     end
   end
