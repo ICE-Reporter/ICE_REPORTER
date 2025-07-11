@@ -4,7 +4,7 @@
 
 // You can include dependencies in two ways.
 //
-// The simplest option is to put them in assets vendor and
+// The simplest option is to put them in assets/vendor and
 // import them using relative paths:
 //
 //     import "../vendor/some-package.js"
