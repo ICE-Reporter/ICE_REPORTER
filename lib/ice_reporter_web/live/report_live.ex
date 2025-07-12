@@ -54,6 +54,7 @@ defmodule IceReporterWeb.ReportLive do
 
   @impl true
   def handle_event("map_report", %{"latitude" => lat, "longitude" => lng, "type" => type}, socket) do
+    IO.puts("🧊 DEBUG: Received map_report event - lat: #{lat}, lng: #{lng}, type: #{type}")
     # Get address from coordinates using reverse geocoding
     address = reverse_geocode(lat, lng)
 
