@@ -32,12 +32,14 @@ const csrfToken = document
 let leafletMap = null;
 let reportPopup = null;
 let reportMarkers = new Map(); // Track markers by report ID
+let liveViewSocket = null; // Store the LiveView socket reference
 
 // LiveView hook for map initialization
 const Hooks = {
   MapContainer: {
     mounted() {
       console.log("🗺️ Map hook mounted!");
+      liveViewSocket = this; // Store reference to the LiveView
       initializeLeaflet();
     },
     destroyed() {
@@ -46,6 +48,7 @@ const Hooks = {
         leafletMap = null;
         reportMarkers.clear();
       }
+      liveViewSocket = null;
     },
   },
 };
@@ -236,9 +239,9 @@ function selectAddress(lat, lng, address) {
   // Hide suggestions
   hideAddressSuggestions();
 
-  // Send event to LiveView
-  if (window.liveSocket && window.liveSocket.main) {
-    window.liveSocket.main.pushEvent("select_address", {
+  // Send event to LiveView using the stored socket reference
+  if (liveViewSocket) {
+    liveViewSocket.pushEvent("select_address", {
       lat: lat,
       lng: lng,
       address: address,
@@ -291,7 +294,7 @@ function showReportPopup(latlng) {
   }
 
   const popupContent = `
-    <div class="text-center p-2">
+    <div class="text-center p-2" style="z-index: 9999;">
       <h3 class="text-lg font-black text-blue-600 mb-3">🧊 Report Activity</h3>
       <div class="grid grid-cols-2 gap-2">
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'checkpoint')" 
@@ -314,7 +317,10 @@ function showReportPopup(latlng) {
     </div>
   `;
 
-  reportPopup = L.popup()
+  reportPopup = L.popup({
+    maxWidth: 300,
+    className: "custom-popup",
+  })
     .setLatLng(latlng)
     .setContent(popupContent)
     .openOn(leafletMap);
@@ -329,13 +335,16 @@ window.submitReport = function (lat, lng, type) {
     leafletMap.closePopup(reportPopup);
   }
 
-  // Send event to LiveView
-  if (window.liveSocket && window.liveSocket.main) {
-    window.liveSocket.main.pushEvent("map_report", {
+  // Send event to LiveView using the stored socket reference
+  if (liveViewSocket) {
+    console.log("✅ Sending map_report event to LiveView...");
+    liveViewSocket.pushEvent("map_report", {
       latitude: parseFloat(lat),
       longitude: parseFloat(lng),
       type: type,
     });
+  } else {
+    console.log("❌ LiveView socket not available");
   }
 
   // Add temporary marker immediately for instant feedback
@@ -458,6 +467,18 @@ function loadExistingReports(reports) {
     );
   });
 }
+
+// Add CSS for popup z-index
+const style = document.createElement("style");
+style.textContent = `
+  .custom-popup .leaflet-popup-content-wrapper {
+    z-index: 9999 !important;
+  }
+  .leaflet-popup {
+    z-index: 9999 !important;
+  }
+`;
+document.head.appendChild(style);
 
 // The lines below enable quality of life phoenix_live_reload
 // development features:
