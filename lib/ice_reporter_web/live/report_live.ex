@@ -67,6 +67,7 @@ defmodule IceReporterWeb.ReportLive do
 
     case Reports.create_report(report_params) do
       {:ok, report} ->
+        IO.puts("🧊 DEBUG: Report created successfully with ID: #{report.id}")
         # Broadcast to all users including the marker data
         Phoenix.PubSub.broadcast(
           IceReporter.PubSub,
@@ -82,7 +83,8 @@ defmodule IceReporterWeb.ReportLive do
            "Cool report submitted! Thanks for keeping the community informed! ❄️"
          )}
 
-      {:error, _changeset} ->
+      {:error, changeset} ->
+        IO.puts("🧊 DEBUG: Report creation failed: #{inspect(changeset.errors)}")
         {:noreply, put_flash(socket, :error, "Oops! Couldn't submit that report. Try again!")}
     end
   end
