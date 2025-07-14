@@ -17,10 +17,6 @@ defmodule IceReporterWeb.ReportLive do
 
   # Simple test event handler for debugging
   # Simple test button event handler for debugging
-  def handle_event("test_button", _params, socket) do
-    IO.puts("🧪 TEST BUTTON CLICKED! LiveView events are working!")
-    {:noreply, socket}
-  end
 
   def handle_event("test_event", params, socket) do
     IO.puts("🧪 TEST EVENT RECEIVED!")
