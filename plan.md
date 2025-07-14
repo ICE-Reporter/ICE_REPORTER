@@ -1,34 +1,34 @@
-# ICE Reporter - Emergency Alert Style App Plan
+# hCaptcha + Rate Limiting Implementation Plan
 
-## High-Level Plan
-- [x] Generate a Phoenix LiveView project called `ice_reporter`
-- [x] Start the server and create our plan.md
-- [x] Replace the default home page with urgent & bold emergency alert style static mockup
-- [x] Implement the core reporting functionality:
-  - [x] Create ReportLive with real-time map integration using JavaScript
-  - [x] Add Report schema/migration for storing reports (location, type, timestamp, description)
-  - [x] Implement the Reports context for CRUD operations
-  - [x] Create the report template with interactive map and reporting form
-- [x] Add real-time features with PubSub for live report updates across all users
-- [x] Update layouts to match our urgent & bold emergency alert design:
-  - [x] Update root.html.heex with emergency theme (forced dark theme for urgency)
-  - [x] Update <Layouts.app> component with bold red/orange alert styling
-  - [x] Update app.css with emergency alert color scheme and bold typography
-- [x] Update router with our new routes (remove placeholder home route)
-- [x] Visit the app to verify everything works
-- [x] Reserve 2-3 steps for debugging and polish
+## Security Enhancement for ICE Reporter
 
-## Design Specifications - Urgent & Bold Emergency Alert Style
-- **Color Scheme**: Dark background with bright red/orange accents for alerts
-- **Typography**: Bold, high-contrast fonts for maximum readability
-- **UI Elements**: Large buttons, clear icons, emergency-style borders
-- **Map Integration**: Real-time plotting of ICE activity reports
-- **Report Types**: Checkpoints, Raids, Patrol Activity, Detention Centers
-- **Features**: Anonymous reporting, time-based expiration, real-time updates
+### Completed Steps:
+- [x] Create implementation plan
+- [ ] Add hCaptcha dependency and configure environment
+- [ ] Create rate limiting GenServer module
+- [ ] Add rate limiting logic to LiveView
+- [ ] Add hCaptcha widget to frontend (map popup)
+- [ ] Update JavaScript to handle captcha verification
+- [ ] Add server-side hCaptcha verification
+- [ ] Integrate rate limiting checks in report creation
+- [ ] Test complete flow and polish UI integration
 
-## Technical Implementation
-- LiveView with PubSub for real-time updates
-- JavaScript map integration (Leaflet or similar)
-- SQLite database for report storage
-- Emergency alert styling with high contrast ratios
+### Implementation Details:
 
+**Rate Limiting Strategy:**
+- Track submissions per IP address
+- Allow 3 reports per 10 minutes per IP
+- After limit reached, require hCaptcha for additional reports
+- Reset counters every 10 minutes
+
+**hCaptcha Integration:**
+- Show captcha widget in map popup after activity type selection
+- Verify captcha token server-side before creating report
+- Maintain ICEE theme styling around captcha widget
+- Graceful error handling for captcha failures
+
+**User Experience:**
+- First 3 reports: seamless (no captcha)
+- Subsequent reports: hCaptcha verification required
+- Clear messaging about rate limits
+- Maintains anonymous reporting
