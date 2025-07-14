@@ -4,14 +4,14 @@
 
 ### Completed Steps:
 - [x] Create implementation plan
-- [ ] Add hCaptcha dependency and configure environment
-- [ ] Create rate limiting GenServer module
-- [ ] Add rate limiting logic to LiveView
-- [ ] Add hCaptcha widget to frontend (map popup)
-- [ ] Update JavaScript to handle captcha verification
-- [ ] Add server-side hCaptcha verification
-- [ ] Integrate rate limiting checks in report creation
-- [ ] Test complete flow and polish UI integration
+- [x] Add hCaptcha dependency and configure environment
+- [x] Create rate limiting GenServer module
+- [x] Add rate limiting logic to LiveView
+- [x] Add hCaptcha widget to frontend (map popup)
+- [x] Update JavaScript to handle captcha verification
+- [x] Add server-side hCaptcha verification
+- [x] Integrate rate limiting checks in report creation
+- [x] Test complete flow and polish UI integration
 
 ### Implementation Details:
 
@@ -32,3 +32,4 @@
 - Subsequent reports: hCaptcha verification required
 - Clear messaging about rate limits
 - Maintains anonymous reporting
+
