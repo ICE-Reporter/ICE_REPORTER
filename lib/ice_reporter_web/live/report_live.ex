@@ -51,6 +51,17 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   # Handle hCaptcha token submission
+  # Handle canceling captcha\
+  def handle_event("cancel_captcha", _params, socket) do\
+    IO.puts("❌ Captcha cancelled by user")\
+\
+    {:noreply,\
+     socket\
+     |> assign(:show_captcha, false)\
+     |> assign(:captcha_token, nil)\
+     |> assign(:rate_limit_message, "Captcha verification cancelled. Please try again when ready.")}\
+  end\
+
   def handle_event("captcha_verified", %{"token" => token}, socket) do
     IO.puts("🔐 Captcha token received: #{String.slice(token, 0..20)}...")
 
