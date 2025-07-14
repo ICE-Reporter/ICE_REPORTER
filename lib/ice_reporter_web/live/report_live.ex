@@ -3,61 +3,107 @@ defmodule IceReporterWeb.ReportLive do
 
   alias IceReporter.Reports
   alias IceReporter.Report
+  alias IceReporter.RateLimiter
 
   def mount(_params, _session, socket) do
     reports = Reports.list_active_reports()
+
+    # Subscribe to real-time updates
+    Phoenix.PubSub.subscribe(IceReporter.PubSub, "reports")
 
     {:ok,
      socket
      |> assign(:reports, reports)
      |> assign(:reports_empty?, reports == [])
      |> assign(:address_suggestions, [])
+     |> assign(:show_captcha, false)
+     |> assign(:captcha_token, nil)
+     |> assign(:rate_limit_message, nil)
      |> push_event("load_existing_reports", %{reports: format_reports_for_js(reports)})}
   end
 
-  # Simple test event handler for debugging
-  # Simple test button event handler for debugging
+  # Rate limit check event handler
+  def handle_event("check_rate_limit", _params, socket) do
+    ip_address = get_client_ip(socket)
 
-  def handle_event("test_event", params, socket) do
-    IO.puts("🧪 TEST EVENT RECEIVED!")
-    IO.inspect(params, label: "Test params")
-    {:noreply, socket}
+    case RateLimiter.check_rate_limit(ip_address) do
+      {:ok, remaining} ->
+        IO.puts("✅ Rate limit OK: #{remaining} reports remaining")
+
+        {:noreply,
+         socket
+         |> assign(:show_captcha, false)
+         |> assign(:rate_limit_message, nil)}
+
+      {:rate_limited, reset_time} ->
+        reset_minutes = div(reset_time - System.system_time(:second), 60)
+
+        message =
+          "Rate limit reached! Please complete captcha verification. Limit resets in #{reset_minutes} minutes."
+
+        IO.puts("⚠️ Rate limited: #{message}")
+
+        {:noreply,
+         socket
+         |> assign(:show_captcha, true)
+         |> assign(:rate_limit_message, message)}
+    end
   end
 
-  # Map report event handler with extensive debugging
+  # Handle hCaptcha token submission
+  def handle_event("captcha_verified", %{"token" => token}, socket) do
+    IO.puts("🔐 Captcha token received: #{String.slice(token, 0..20)}...")
+
+    {:noreply,
+     socket
+     |> assign(:captcha_token, token)
+     |> assign(:show_captcha, false)
+     |> assign(:rate_limit_message, nil)}
+  end
+
+  # Map report event handler with rate limiting and captcha
   def handle_event("map_report", params, socket) do
     IO.puts("🗺️ MAP REPORT EVENT RECEIVED!")
     IO.inspect(params, label: "Map report params")
 
-    case create_report_from_params(params) do
-      {:ok, report} ->
-        IO.puts("✅ Report created successfully: #{report.id}")
+    ip_address = get_client_ip(socket)
 
-        # Broadcast to all connected clients
-        Phoenix.PubSub.broadcast(
-          IceReporter.PubSub,
-          "reports",
-          {:new_report, report}
-        )
+    # Check rate limit first
+    case RateLimiter.check_rate_limit(ip_address) do
+      {:ok, _remaining} ->
+        # Within rate limit, proceed without captcha
+        create_and_process_report(params, socket, ip_address, false)
 
-        # Update local state
-        updated_reports = [report | socket.assigns.reports]
+      {:rate_limited, _reset_time} ->
+        # Rate limited, require captcha verification
+        captcha_token = socket.assigns.captcha_token
 
-        {:noreply,
-         socket
-         |> assign(:reports, updated_reports)
-         |> assign(:reports_empty?, false)
-         |> push_event("add_report_marker", %{
-           id: report.id,
-           latitude: report.latitude,
-           longitude: report.longitude,
-           type: report.type
-         })}
+        if captcha_token do
+          # Verify captcha token
+          case verify_hcaptcha(captcha_token) do
+            {:ok, _response} ->
+              IO.puts("✅ hCaptcha verified successfully")
+              create_and_process_report(params, socket, ip_address, true)
 
-      {:error, changeset} ->
-        IO.puts("❌ Failed to create report")
-        IO.inspect(changeset.errors, label: "Changeset errors")
-        {:noreply, socket}
+            {:error, reason} ->
+              IO.puts("❌ hCaptcha verification failed: #{reason}")
+
+              {:noreply,
+               socket
+               |> assign(:show_captcha, true)
+               |> assign(:captcha_token, nil)
+               |> assign(:rate_limit_message, "Captcha verification failed. Please try again.")}
+          end
+        else
+          # No captcha token, show captcha
+          {:noreply,
+           socket
+           |> assign(:show_captcha, true)
+           |> assign(
+             :rate_limit_message,
+             "Rate limit reached! Please complete captcha verification."
+           )}
+        end
     end
   end
 
@@ -123,6 +169,52 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   # Private helper functions
+  defp create_and_process_report(params, socket, ip_address, used_captcha) do
+    case create_report_from_params(params) do
+      {:ok, report} ->
+        IO.puts("✅ Report created successfully: #{report.id}")
+
+        # Record the submission for rate limiting
+        RateLimiter.record_submission(ip_address)
+
+        # Broadcast to all connected clients
+        Phoenix.PubSub.broadcast(
+          IceReporter.PubSub,
+          "reports",
+          {:new_report, report}
+        )
+
+        # Update local state
+        updated_reports = [report | socket.assigns.reports]
+
+        success_message =
+          if used_captcha do
+            "Report submitted successfully with verification!"
+          else
+            "Report submitted successfully!"
+          end
+
+        {:noreply,
+         socket
+         |> assign(:reports, updated_reports)
+         |> assign(:reports_empty?, false)
+         |> assign(:captcha_token, nil)
+         |> assign(:show_captcha, false)
+         |> assign(:rate_limit_message, success_message)
+         |> push_event("add_report_marker", %{
+           id: report.id,
+           latitude: report.latitude,
+           longitude: report.longitude,
+           type: report.type
+         })}
+
+      {:error, changeset} ->
+        IO.puts("❌ Failed to create report")
+        IO.inspect(changeset.errors, label: "Changeset errors")
+        {:noreply, socket}
+    end
+  end
+
   defp create_report_from_params(params) do
     # Extract coordinates and type
     latitude = Map.get(params, "latitude")
@@ -148,6 +240,27 @@ defmodule IceReporterWeb.ReportLive do
       location_description: location_description,
       description: "Reported via map click"
     })
+  end
+
+  defp verify_hcaptcha(token) do
+    # For now, we'll implement a simple mock verification
+    # In production, you'd call the hCaptcha API with your secret key
+
+    # Mock successful verification for development
+    if String.length(token) > 10 do
+      {:ok, %{"success" => true}}
+    else
+      {:error, "Invalid token"}
+    end
+  end
+
+  defp get_client_ip(socket) do
+    # Extract client IP from the socket
+    case get_connect_info(socket, :peer_data) do
+      %{address: address} -> :inet.ntoa(address) |> to_string()
+      # fallback for development
+      _ -> "127.0.0.1"
+    end
   end
 
   defp search_addresses(query) do
