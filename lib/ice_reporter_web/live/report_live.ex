@@ -234,7 +234,6 @@ defmodule IceReporterWeb.ReportLive do
       true -> "#{div(diff, 1440)} days ago"
     end
   end
-  end
 
   defp report_type_display(type) do
     case type do
