@@ -51,6 +51,66 @@ const Hooks = {
       liveViewSocket = null;
     },
   },
+  HCaptcha: {
+    mounted() {
+      console.log("🔐 hCaptcha hook mounted!");
+      const container = this.el;
+      const sitekey = container.dataset.sitekey;
+
+      // Load hCaptcha script if not already loaded
+      if (!window.hcaptcha) {
+        const script = document.createElement("script");
+        script.src =
+          "https://js.hcaptcha.com/1/api.js?onload=onHCaptchaLoad&render=explicit";
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+
+        // Set up global callback
+        window.onHCaptchaLoad = () => {
+          this.renderCaptcha(sitekey);
+        };
+      } else {
+        // hCaptcha already loaded
+        this.renderCaptcha(sitekey);
+      }
+    },
+
+    renderCaptcha(sitekey) {
+      const container = this.el;
+
+      // Clear any existing captcha
+      container.innerHTML = "";
+
+      // Render hCaptcha widget
+      const widgetId = window.hcaptcha.render(container, {
+        sitekey: sitekey,
+        callback: (token) => {
+          console.log(
+            "✅ hCaptcha solved! Token:",
+            token.substring(0, 20) + "...",
+          );
+
+          // Send token to LiveView
+          if (liveViewSocket) {
+            liveViewSocket.pushEvent("captcha_verified", { token: token });
+          }
+        },
+        "expired-callback": () => {
+          console.log("⏰ hCaptcha expired");
+        },
+        "error-callback": (error) => {
+          console.log("❌ hCaptcha error:", error);
+        },
+      });
+
+      console.log("🔐 hCaptcha widget rendered with ID:", widgetId);
+    },
+
+    destroyed() {
+      console.log("🔐 hCaptcha hook destroyed");
+    },
+  },
 };
 
 // Add hooks to LiveSocket
