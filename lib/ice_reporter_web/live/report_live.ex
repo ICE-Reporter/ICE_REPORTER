@@ -15,7 +15,7 @@ defmodule IceReporterWeb.ReportLive do
      |> push_event("load_existing_reports", %{reports: format_reports_for_js(reports)})}
   end
 
-  # Simple test event handler
+  # Simple test event handler for debugging
   def handle_event("test_event", params, socket) do
     IO.puts("🧪 TEST EVENT RECEIVED!")
     IO.inspect(params, label: "Test params")
@@ -44,6 +44,7 @@ defmodule IceReporterWeb.ReportLive do
         {:noreply,
          socket
          |> assign(:reports, updated_reports)
+         |> assign(:reports_empty?, false)
          |> push_event("add_report_marker", %{
            id: report.id,
            latitude: report.latitude,
@@ -110,6 +111,7 @@ defmodule IceReporterWeb.ReportLive do
     {:noreply,
      socket
      |> assign(:reports, updated_reports)
+     |> assign(:reports_empty?, false)
      |> push_event("add_report_marker", %{
        id: report.id,
        latitude: report.latitude,
@@ -222,16 +224,6 @@ defmodule IceReporterWeb.ReportLive do
       diff < 60 -> "#{diff} minutes ago"
       diff < 1440 -> "#{div(diff, 60)} hours ago"
       true -> "#{div(diff, 1440)} days ago"
-    end
-  end
-
-  defp get_emoji_for_type(type) do
-    case type do
-      "checkpoint" -> "🛑"
-      "raid" -> "🏠"
-      "patrol" -> "👮"
-      "detention" -> "🧊"
-      _ -> "📍"
     end
   end
 
