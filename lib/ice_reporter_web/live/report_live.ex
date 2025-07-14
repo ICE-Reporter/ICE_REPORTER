@@ -11,6 +11,9 @@ defmodule IceReporterWeb.ReportLive do
     # Subscribe to real-time updates
     Phoenix.PubSub.subscribe(IceReporter.PubSub, "reports")
 
+    # Store client IP in socket assigns during mount
+    client_ip = get_client_ip_from_connect_info(socket)
+
     {:ok,
      socket
      |> assign(:reports, reports)
@@ -19,12 +22,13 @@ defmodule IceReporterWeb.ReportLive do
      |> assign(:show_captcha, false)
      |> assign(:captcha_token, nil)
      |> assign(:rate_limit_message, nil)
+     |> assign(:client_ip, client_ip)
      |> push_event("load_existing_reports", %{reports: format_reports_for_js(reports)})}
   end
 
   # Rate limit check event handler
   def handle_event("check_rate_limit", _params, socket) do
-    ip_address = get_client_ip(socket)
+    ip_address = socket.assigns.client_ip
 
     case RateLimiter.check_rate_limit(ip_address) do
       {:ok, remaining} ->
@@ -80,7 +84,7 @@ defmodule IceReporterWeb.ReportLive do
     IO.puts("🗺️ MAP REPORT EVENT RECEIVED!")
     IO.inspect(params, label: "Map report params")
 
-    ip_address = get_client_ip(socket)
+    ip_address = socket.assigns.client_ip
 
     # Check rate limit first
     case RateLimiter.check_rate_limit(ip_address) do
@@ -268,8 +272,8 @@ defmodule IceReporterWeb.ReportLive do
     end
   end
 
-  defp get_client_ip(socket) do
-    # Extract client IP from the socket
+  defp get_client_ip_from_connect_info(socket) do
+    # Extract client IP from the socket during mount
     case get_connect_info(socket, :peer_data) do
       %{address: address} -> :inet.ntoa(address) |> to_string()
       # fallback for development
