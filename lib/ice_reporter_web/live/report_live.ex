@@ -221,7 +221,9 @@ defmodule IceReporterWeb.ReportLive do
     end)
   end
 
-  defp format_time_ago(datetime) do
+  defp format_time_ago(naive_datetime) do
+    # Convert NaiveDateTime to UTC DateTime for comparison
+    datetime = DateTime.from_naive!(naive_datetime, "Etc/UTC")
     now = DateTime.utc_now()
     diff = DateTime.diff(now, datetime, :minute)
 
@@ -231,6 +233,7 @@ defmodule IceReporterWeb.ReportLive do
       diff < 1440 -> "#{div(diff, 60)} hours ago"
       true -> "#{div(diff, 1440)} days ago"
     end
+  end
   end
 
   defp report_type_display(type) do
