@@ -10,6 +10,7 @@ defmodule IceReporterWeb.ReportLive do
     {:ok,
      socket
      |> assign(:reports, reports)
+     |> assign(:reports_empty?, reports == [])
      |> assign(:address_suggestions, [])
      |> push_event("load_existing_reports", %{reports: format_reports_for_js(reports)})}
   end
