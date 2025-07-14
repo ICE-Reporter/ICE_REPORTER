@@ -9,8 +9,7 @@ defmodule IceReporter.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
-      deps: deps(),
-      listeners: [Phoenix.CodeReloader]
+      deps: deps()
     ]
   end
 
@@ -23,7 +22,7 @@ defmodule IceReporter.MixProject do
       extra_applications: [:logger, :runtime_tools]
     ]
   end
-
+  
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
@@ -57,8 +56,7 @@ defmodule IceReporter.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"},
-      {:hcaptcha, "~> 0.1.0"}
+      {:bandit, "~> 1.5"}
     ]
   end
 
