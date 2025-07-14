@@ -234,7 +234,7 @@ defmodule IceReporterWeb.ReportLive do
     end
   end
 
-  defp get_type_display_name(type) do
+  defp report_type_display(type) do
     case type do
       "checkpoint" -> "CHECKPOINT"
       "raid" -> "OPERATION"
