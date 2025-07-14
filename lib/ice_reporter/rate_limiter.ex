@@ -59,7 +59,7 @@ defmodule IceReporter.RateLimiter do
         new_state = Map.delete(state, ip_address)
         {:reply, {:ok, @max_reports}, new_state}
 
-      {count, _timestamp} when count >= @max_reports ->
+      {count, timestamp} when count >= @max_reports ->
         # Rate limited
         next_reset = timestamp + @window_minutes * 60
         {:reply, {:rate_limited, next_reset}, state}
@@ -73,8 +73,6 @@ defmodule IceReporter.RateLimiter do
 
   def handle_call({:get_count, ip_address}, _from, state) do
     count =
-      case Map.get(state, ip_address) do
-      count =
       case Map.get(state, ip_address) do
         {count, _timestamp} -> count
         nil -> 0
