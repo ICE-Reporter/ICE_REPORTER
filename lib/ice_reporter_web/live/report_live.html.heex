@@ -29,6 +29,49 @@
       🧊 STAY COOL & ANONYMOUS - COMMUNITY SAFETY FIRST ❄️
     </div>
     
+<!-- Rate Limit Message -->
+    <%= if @rate_limit_message do %>
+      <div class="max-w-4xl mx-auto px-6 py-2">
+        <div class="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-orange-400 rounded-xl p-3 text-center">
+          <p class="text-orange-800 font-bold text-sm">{@rate_limit_message}</p>
+        </div>
+      </div>
+    <% end %>
+    
+<!-- hCaptcha Modal Overlay -->
+    <%= if @show_captcha do %>
+      <div class="fixed inset-0 bg-black/50 z-[99999] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border-4 border-blue-500 shadow-2xl max-w-md w-full p-6 relative">
+          <div class="text-center mb-6">
+            <div class="text-4xl mb-2">🔐</div>
+            <h3 class="text-2xl font-black text-blue-600 uppercase">Security Check</h3>
+            <p class="text-blue-500 font-bold mt-2">
+              Please verify you're human to continue reporting
+            </p>
+          </div>
+          
+<!-- hCaptcha widget will be inserted here -->
+          <div
+            id="hcaptcha-container"
+            phx-hook="HCaptcha"
+            class="flex justify-center mb-4"
+            data-sitekey="10000000-ffff-ffff-ffff-000000000001"
+          >
+            <!-- hCaptcha widget renders here -->
+          </div>
+
+          <div class="text-center">
+            <button
+              phx-click="cancel_captcha"
+              class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    
 <!-- Address Search Bar -->
     <div class="max-w-2xl mx-auto px-6 py-4 relative z-10">
       <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-2xl border-3 border-white shadow-xl backdrop-blur-md p-4">
