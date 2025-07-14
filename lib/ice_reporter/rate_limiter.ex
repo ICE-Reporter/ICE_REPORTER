@@ -74,8 +74,10 @@ defmodule IceReporter.RateLimiter do
   def handle_call({:get_count, ip_address}, _from, state) do
     count =
       case Map.get(state, ip_address) do
+      count =
+      case Map.get(state, ip_address) do
+        {count, _timestamp} -> count
         nil -> 0
-        {count, _} -> count
       end
 
     {:reply, count, state}
