@@ -54,7 +54,7 @@ defmodule IceReporter.RateLimiter do
         # No previous submissions
         {:reply, {:ok, @max_reports}, state}
 
-      {count, timestamp} when timestamp < window_start ->
+      {_count, timestamp} when timestamp < window_start ->
         # Window has expired, reset counter
         new_state = Map.delete(state, ip_address)
         {:reply, {:ok, @max_reports}, new_state}
