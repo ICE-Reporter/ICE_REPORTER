@@ -140,6 +140,9 @@
               <%= for {id, report} <- @streams.reports do %>
                 <div
                   id={id}
+                  data-latitude={report.latitude}
+                  data-longitude={report.longitude}
+                  data-type={report.type}
                   class="bg-gradient-to-r from-blue-50 to-red-50 border-l-6 border-red-400 p-4 rounded-r-2xl shadow-lg relative overflow-hidden"
                 >
                   <div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/30">
