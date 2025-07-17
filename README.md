@@ -1,18 +1,283 @@
-# IceReporter
+# ICE Reporter
 
-To start your Phoenix server:
+🐻‍❄️ A real-time community reporting system for ICE (Immigration and Customs Enforcement) activity.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+[![Deploy to Fly.io](https://fly.io/static/images/launch-button.svg)](https://fly.io/launch?template=https://github.com/yourusername/ice_reporter)
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+## Overview
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+ICE Reporter is an anonymous, real-time community safety platform that allows users to report ICE activity including checkpoints, operations, patrols, and detention facilities. The application prioritizes user privacy, requires no registration, and provides immediate community-wide visibility of reports through an interactive map interface.
 
-## Learn more
+## Features
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://hexdocs.pm/phoenix/overview.html
-* Docs: https://hexdocs.pm/phoenix
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+### 🗺️ Interactive Map Reporting
+- **One-click reporting**: Click anywhere on the map to report ICE activity
+- **Real-time updates**: Reports appear instantly across all connected users
+- **Geographic validation**: Ensures reports are within the continental United States
+- **Activity types**: Checkpoint, Operation, Patrol, and Detention Facility reporting
+
+### 🔍 Address Search & Navigation
+- **Smart autocomplete**: Type any address to quickly navigate the map
+- **Keyboard navigation**: Arrow keys and Enter for accessibility
+- **US-focused results**: Prioritizes locations within the United States
+
+### 🔒 Privacy & Security
+- **Completely anonymous**: No user accounts, login, or personal information required
+- **IP-based rate limiting**: 3 reports per 10 minutes to prevent abuse
+- **Browser fingerprinting**: Enhanced spam protection without tracking users
+- **hCaptcha integration**: Automated verification for sustained reporting
+- **Data minimization**: Only essential geographic and temporal data is stored
+
+### ⚡ Real-time Experience
+- **Live updates**: Phoenix LiveView provides instant report broadcasting
+- **Responsive design**: Works seamlessly on desktop and mobile devices
+- **Auto-expiration**: Reports automatically expire after 4 hours
+
+## Tech Stack
+
+### Backend
+- **[Phoenix Framework](https://phoenixframework.org/)**: Modern web framework for Elixir
+- **[Phoenix LiveView](https://hexdocs.pm/phoenix_live_view/)**: Real-time server-rendered HTML
+- **[Ecto](https://hexdocs.pm/ecto/)**: Database wrapper and query generator
+- **[SQLite](https://sqlite.org/)**: Embedded database for simplicity and portability
+
+### Frontend
+- **[TailwindCSS](https://tailwindcss.com/)**: Utility-first CSS framework
+- **[Leaflet.js](https://leafletjs.com/)**: Interactive map library
+- **[OpenStreetMap](https://www.openstreetmap.org/)**: Free map tiles and geocoding
+
+### Services
+- **[Nominatim](https://nominatim.openstreetmap.org/)**: Address search and reverse geocoding
+- **[hCaptcha](https://www.hcaptcha.com/)**: Privacy-focused captcha verification
+- **[Fly.io](https://fly.io/)**: Application deployment platform
+
+## How It Works
+
+### Report Creation Process
+1. **User clicks** on the interactive map at any location
+2. **Report type selection** popup appears with four options:
+   - 🛑 **Checkpoint**: Traffic stops and document checks
+   - 🏠 **Operation**: Raids and enforcement actions
+   - 👮 **Patrol**: Routine ICE patrol activity
+   - 🧊 **Facility**: Detention centers and processing facilities
+
+3. **Instant submission** with immediate visual feedback
+4. **Address resolution** happens asynchronously via OpenStreetMap
+5. **Real-time broadcast** to all connected users via Phoenix PubSub
+6. **Automatic expiration** after 4 hours
+
+### Rate Limiting & Anti-Abuse
+- **3 reports per 10 minutes** per IP address/browser fingerprint
+- **hCaptcha verification** required for additional reports
+- **Geographic validation** prevents ocean/invalid coordinate reports
+- **Duplicate detection** blocks exact coordinate matches within 1 hour
+- **Continental US bounds** enforcement
+
+## Trust & Privacy
+
+### Data Collection
+ICE Reporter follows strict data minimization principles:
+
+```elixir
+# Only this data is stored per report:
+%{
+  type: "checkpoint" | "raid" | "patrol" | "detention",
+  description: "Reported via map click",
+  latitude: 40.7128,
+  longitude: -74.0060,
+  location_description: "123 Main St, New York, NY",
+  expires_at: ~U[2024-01-02 15:30:00Z],
+  is_active: true,
+  inserted_at: ~U[2024-01-01 15:30:00Z],
+  updated_at: ~U[2024-01-01 15:30:00Z]
+}
+```
+
+### What We Don't Store
+- ❌ **No user accounts** or personal information
+- ❌ **No IP addresses** in the database
+- ❌ **No browser fingerprints** in the database
+- ❌ **No session tracking** beyond rate limiting
+- ❌ **No analytics** or third-party tracking
+- ❌ **No email** or contact information
+
+### Security Measures
+- **HTTPS everywhere** with automatic redirects
+- **Content Security Policy** headers
+- **Rate limiting** to prevent abuse
+- **Input validation** and sanitization
+- **Geographic bounds** checking
+- **Automatic data expiration** (4 hours)
+
+### Rate Limiting Details
+The rate limiter uses an in-memory GenServer that:
+- Tracks submission counts per IP/fingerprint
+- Automatically cleans up expired entries every 5 minutes
+- Resets after successful hCaptcha verification
+- Does not persist rate limiting data to the database
+
+## Development Setup
+
+### Prerequisites
+- **Elixir 1.15+** with OTP 26+
+- **Node.js 18+** for asset compilation
+- **Git** for version control
+
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/yourusername/ice_reporter.git
+cd ice_reporter
+
+# Install dependencies
+mix setup
+
+# Start the development server
+mix phx.server
+```
+
+Visit [`localhost:4000`](http://localhost:4000) to see the application.
+
+### Development Commands
+```bash
+# Install dependencies
+mix deps.get
+
+# Set up database
+mix ecto.setup
+
+# Run tests
+mix test
+
+# Build assets
+mix assets.build
+
+# Interactive console
+iex -S mix phx.server
+```
+
+### Environment Variables
+For production deployment, configure:
+```bash
+SECRET_KEY_BASE="your-secret-key-here"
+DATABASE_PATH="/data/ice_reporter.db"
+PHX_HOST="your-domain.com"
+PORT="8080"
+HCAPTCHA_SITE_KEY="your-site-key"
+HCAPTCHA_SECRET="your-secret-key"
+```
+
+## Database Schema
+
+### Reports Table
+```sql
+CREATE TABLE reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,                    -- "checkpoint", "raid", "patrol", "detention"
+  description TEXT,                      -- "Reported via map click"
+  latitude REAL NOT NULL,                -- Decimal degrees
+  longitude REAL NOT NULL,               -- Decimal degrees
+  location_description TEXT,             -- "123 Main St, New York, NY"
+  expires_at DATETIME,                   -- UTC timestamp, 4 hours from creation
+  is_active BOOLEAN DEFAULT true,        -- Soft deletion flag
+  inserted_at DATETIME NOT NULL,         -- UTC timestamp
+  updated_at DATETIME NOT NULL           -- UTC timestamp
+);
+
+-- Indexes for performance
+CREATE INDEX idx_reports_type ON reports(type);
+CREATE INDEX idx_reports_active ON reports(is_active);
+CREATE INDEX idx_reports_expires ON reports(expires_at);
+CREATE INDEX idx_reports_location ON reports(latitude, longitude);
+```
+
+### Data Lifecycle
+- **Creation**: Reports are created with coordinates and type
+- **Address Resolution**: Location descriptions are added asynchronously
+- **Expiration**: Reports automatically expire after 4 hours
+- **Cleanup**: Expired reports remain in database for historical purposes but are filtered from queries
+
+## Project Structure
+
+```
+ice_reporter/
+├── lib/
+│   ├── ice_reporter/
+│   │   ├── application.ex           # OTP application
+│   │   ├── repo.ex                  # Database repository
+│   │   ├── report.ex                # Report schema
+│   │   ├── reports.ex               # Report context
+│   │   └── rate_limiter.ex          # Rate limiting GenServer
+│   └── ice_reporter_web/
+│       ├── controllers/             # HTTP controllers
+│       ├── live/
+│       │   ├── report_live.ex       # Main LiveView
+│       │   └── report_live.html.heex # Template
+│       ├── components/              # UI components
+│       ├── router.ex                # URL routing
+│       └── endpoint.ex              # Web endpoint
+├── assets/
+│   ├── css/
+│   │   └── app.css                  # Tailwind styles
+│   └── js/
+│       └── app.js                   # Frontend JavaScript
+├── config/
+│   ├── config.exs                   # Base configuration
+│   ├── dev.exs                      # Development config
+│   ├── prod.exs                     # Production config
+│   └── runtime.exs                  # Runtime configuration
+├── priv/
+│   ├── repo/migrations/             # Database migrations
+│   └── static/                      # Static assets
+├── test/                            # Test files
+├── fly.toml                         # Fly.io deployment config
+├── Dockerfile                       # Container configuration
+└── mix.exs                          # Project dependencies
+```
+
+## Deployment
+
+### Fly.io Deployment
+1. **Install Fly CLI**: `curl -L https://fly.io/install.sh | sh`
+2. **Login**: `flyctl auth login`
+3. **Deploy**: `flyctl deploy`
+
+### Environment Setup
+```bash
+# Set required secrets
+flyctl secrets set SECRET_KEY_BASE="$(mix phx.gen.secret)"
+flyctl secrets set HCAPTCHA_SITE_KEY="your-site-key"
+flyctl secrets set HCAPTCHA_SECRET="your-secret-key"
+
+# Create persistent volume for database
+flyctl volumes create ice_reporter_data --size 1
+```
+
+### Production Checklist
+- [ ] Set strong `SECRET_KEY_BASE`
+- [ ] Configure production hCaptcha keys
+- [ ] Set up persistent volume for SQLite database
+- [ ] Configure custom domain (optional)
+- [ ] Test rate limiting and captcha flow
+- [ ] Verify HTTPS enforcement
+- [ ] Monitor application logs
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Support
+
+For issues and feature requests, please use the [GitHub Issues](https://github.com/yourusername/ice_reporter/issues) page.
+
+---
+
+**Important**: This application is designed for legitimate community safety purposes. Please use responsibly and in accordance with local laws and regulations.

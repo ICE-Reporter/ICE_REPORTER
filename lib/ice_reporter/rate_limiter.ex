@@ -39,6 +39,13 @@ defmodule IceReporter.RateLimiter do
     GenServer.call(__MODULE__, {:get_count, ip_address})
   end
 
+  @doc """
+  Reset rate limit for IP address (after successful captcha verification)
+  """
+  def reset_rate_limit(ip_address) do
+    GenServer.cast(__MODULE__, {:reset, ip_address})
+  end
+
   ## Server Callbacks
 
   def init(_opts) do
@@ -75,6 +82,23 @@ defmodule IceReporter.RateLimiter do
     end
   end
 
+  def handle_call({:increment, ip_address}, _from, state) do
+    now = System.system_time(:second)
+
+    new_state =
+      case Map.get(state, ip_address) do
+        nil ->
+          # First submission in window
+          Map.put(state, ip_address, {1, now})
+
+        {count, timestamp} ->
+          # Increment count, keep original timestamp
+          Map.put(state, ip_address, {count + 1, timestamp})
+      end
+
+    {:reply, :ok, new_state}
+  end
+
   def handle_call({:get_count, ip_address}, _from, state) do
     count =
       case Map.get(state, ip_address) do
@@ -99,6 +123,13 @@ defmodule IceReporter.RateLimiter do
           Map.put(state, ip_address, {count + 1, timestamp})
       end
 
+    {:noreply, new_state}
+  end
+
+  def handle_cast({:reset, ip_address}, state) do
+    # Remove the IP from rate limiting (captcha verified)
+    new_state = Map.delete(state, ip_address)
+    IO.puts("🔄 Rate limit reset for IP: #{ip_address}")
     {:noreply, new_state}
   end
 

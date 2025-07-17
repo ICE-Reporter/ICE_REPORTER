@@ -81,3 +81,8 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# hCaptcha configuration (use environment variables or fallback to test keys)
+config :ice_reporter,
+  hcaptcha_site_key: System.get_env("HCAPTCHA_SITE_KEY") || "10000000-ffff-ffff-ffff-000000000001",
+  hcaptcha_secret: System.get_env("HCAPTCHA_SECRET") || "0x0000000000000000000000000000000000000000"

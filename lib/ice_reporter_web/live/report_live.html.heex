@@ -9,24 +9,38 @@
       </div>
     </div>
     
+<!-- Prototype Testing Banner -->
+    <div class="bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-2 sm:px-4 sm:py-3 text-center font-bold text-xs sm:text-sm border-b-2 border-orange-600 relative z-50">
+      <div class="flex items-center justify-center gap-2 flex-wrap">
+        <span class="text-lg sm:text-xl">⚠️</span>
+        <span class="uppercase tracking-wide">
+          <span class="font-black">PROTOTYPE</span> - This site is currently being tested and developed
+        </span>
+        <span class="text-lg sm:text-xl">⚠️</span>
+      </div>
+      <div class="text-xs sm:text-sm mt-1 opacity-90">
+        Data may be reset • Features may change • Use for testing purposes only
+      </div>
+    </div>
+    
 <!-- ICEE Header -->
-    <div class="bg-gradient-to-r from-blue-500 to-red-500 px-4 py-4 text-center shadow-xl border-b-4 border-white relative overflow-hidden">
+    <div class="bg-gradient-to-r from-blue-500 to-red-500 px-3 py-3 sm:px-4 sm:py-4 text-center shadow-xl border-b-2 sm:border-b-4 border-white relative overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse">
       </div>
       <div class="relative z-10">
-        <div class="text-6xl mb-2 animate-bounce">🐻‍❄️</div>
-        <h1 class="text-4xl font-black text-white uppercase tracking-wider drop-shadow-lg">
+        <div class="text-4xl sm:text-5xl lg:text-6xl mb-1 sm:mb-2 animate-bounce">🐻‍❄️</div>
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-white uppercase tracking-wider drop-shadow-lg">
           ICE Reporter
         </h1>
-        <p class="text-lg text-white/95 font-bold mt-1">
-          Cool Community Alert System
+        <p class="text-sm sm:text-base lg:text-lg text-white/95 font-bold mt-1">
+          Community Alert System
         </p>
       </div>
     </div>
     
 <!-- Chill Safety Banner -->
-    <div class="bg-gradient-to-r from-white to-blue-100 text-blue-600 px-4 py-3 text-center font-black text-sm border-b-2 border-red-400">
-      🧊 STAY COOL & ANONYMOUS - COMMUNITY SAFETY FIRST ❄️
+    <div class="bg-gradient-to-r from-white to-blue-100 text-blue-600 px-3 py-2 sm:px-4 sm:py-3 text-center font-black text-xs sm:text-sm border-b-2 border-red-400">
+      <span class="inline">🧊 ANONYMOUS - COMMUNITY SAFETY FIRST ❄️</span>
     </div>
     
 <!-- Rate Limit Message -->
@@ -55,7 +69,7 @@
             id="hcaptcha-container"
             phx-hook="HCaptcha"
             class="flex justify-center mb-4"
-            data-sitekey="10000000-ffff-ffff-ffff-000000000001"
+            data-sitekey={Application.get_env(:ice_reporter, :hcaptcha_site_key)}
           >
             <!-- hCaptcha widget renders here -->
           </div>
@@ -73,41 +87,61 @@
     <% end %>
     
 <!-- Address Search Bar -->
-    <div class="max-w-2xl mx-auto px-6 py-4 relative z-10">
-      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-2xl border-3 border-white shadow-xl backdrop-blur-md p-4">
+    <div class="max-w-2xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 relative z-[9999]">
+      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-lg sm:rounded-xl lg:rounded-2xl border-2 sm:border-3 border-white shadow-xl backdrop-blur-md p-3 sm:p-4">
         <div class="relative">
           <input
             type="text"
             id="address-search"
-            placeholder="🔍 Search for an address to report activity..."
-            class="w-full px-4 py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 placeholder:text-blue-400 border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-xl font-bold text-lg shadow-inner"
+            placeholder="🔍 Search address..."
+            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 placeholder:text-blue-400 border-2 sm:border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-lg sm:rounded-xl font-bold text-base sm:text-lg shadow-inner"
             phx-keyup="search_address"
             phx-debounce="300"
           />
           <!-- Autocomplete dropdown -->
           <div id="address-suggestions" class="absolute top-full left-0 right-0 z-[99999] hidden">
-            <div class="bg-white border-3 border-blue-200 rounded-xl mt-2 shadow-2xl max-h-60 overflow-y-auto">
+            <div class="bg-white border-2 sm:border-3 border-blue-200 rounded-lg sm:rounded-xl mt-2 shadow-2xl max-h-60 overflow-y-auto">
               <!-- Suggestions will be populated here -->
             </div>
           </div>
         </div>
       </div>
     </div>
+    
+<!-- Search Overlay Dimmer -->
+    <div
+      id="search-overlay"
+      class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[9998] hidden transition-all duration-300"
+    >
+    </div>
 
-    <div class="grid grid-cols-1 gap-6 p-6 max-w-7xl mx-auto relative z-10">
+    <div class="grid grid-cols-1 gap-3 sm:gap-4 lg:gap-6 p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto relative z-10">
       <!-- Map Section -->
-      <div class="bg-gradient-to-br from-white/90 to-blue-50/90 rounded-3xl border-4 border-white shadow-2xl backdrop-blur-md">
-        <div class="p-4 border-b-2 border-blue-200/50">
-          <h2 class="text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2">
-            🗺️ Chill Map - Click to Report Activity
-            <span class="text-sm bg-blue-500 text-white px-2 py-1 rounded-full">LIVE</span>
+      <div class="bg-gradient-to-br from-white/90 to-blue-50/90 rounded-xl sm:rounded-2xl lg:rounded-3xl border-2 sm:border-3 lg:border-4 border-white shadow-2xl backdrop-blur-md">
+        <div class="p-3 sm:p-4 border-b-2 border-blue-200/50">
+          <h2 class="text-lg sm:text-xl lg:text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2 flex-wrap">
+            <span class="flex items-center gap-1 flex-wrap">
+              <span class="hidden sm:inline">🗺️</span>
+              <span class="text-sm sm:text-base lg:text-lg">
+                ICE Map - <span class="hidden sm:inline">Click to </span>Report Activity
+              </span>
+            </span>
+            <span class="text-xs sm:text-sm bg-blue-500 text-white px-2 py-1 rounded-full">
+              LIVE
+            </span>
           </h2>
+          <!-- Explanatory text for all screen sizes -->
+          <div class="mt-2">
+            <p class="text-xs sm:text-sm text-blue-500 font-medium leading-tight">
+              Reports auto-expire and are removed after 4 hours. Database cleanup runs every 30 minutes.
+            </p>
+          </div>
         </div>
         <div
           id="map-container"
           phx-hook="MapContainer"
           phx-update="ignore"
-          class="h-96 lg:h-[500px] relative bg-gradient-to-br from-blue-100 to-red-100 rounded-b-3xl"
+          class="h-64 sm:h-80 lg:h-96 xl:h-[500px] relative bg-gradient-to-br from-blue-100 to-red-100 rounded-b-xl sm:rounded-b-2xl lg:rounded-b-3xl"
         >
           <!-- Leaflet will render here -->
         </div>
@@ -115,59 +149,129 @@
     </div>
     
 <!-- Recent Reports -->
-    <div class="max-w-7xl mx-auto px-6 pb-8 relative z-10">
-      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-3xl border-4 border-white shadow-2xl backdrop-blur-md">
-        <div class="p-4 border-b-2 border-blue-200/50">
-          <h2 class="text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2">
-            📊 Recent Cool Reports
-            <span class="text-sm bg-gradient-to-r from-red-400 to-blue-400 text-white px-2 py-1 rounded-full">
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 pb-6 sm:pb-8 relative z-10">
+      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-xl sm:rounded-2xl lg:rounded-3xl border-2 sm:border-3 lg:border-4 border-white shadow-2xl backdrop-blur-md">
+        <div class="p-3 sm:p-4 border-b-2 border-blue-200/50">
+          <h2 class="text-lg sm:text-xl lg:text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2 flex-wrap">
+            <span class="flex items-center gap-1 flex-wrap">
+              ❄️ <span class="text-sm sm:text-base lg:text-lg">Recent ICE Reports</span>
+            </span>
+            <span class="text-xs sm:text-sm bg-gradient-to-r from-red-400 to-blue-400 text-white px-2 py-1 rounded-full">
               FRESH
             </span>
           </h2>
+          <!-- Explanatory text for all screen sizes -->
+          <div class="mt-2">
+            <p class="text-xs sm:text-sm text-blue-500 font-medium leading-tight">
+              Reports auto-expire after 4 hours.
+              <span class="hidden sm:inline">Click</span><span class="sm:hidden">Tap</span>
+              addresses to navigate on map.
+            </p>
+          </div>
         </div>
 
-        <div class="p-6">
+        <div class="p-3 sm:p-4 lg:p-6">
           <%= if @reports_empty? do %>
-            <div class="text-center py-12 text-blue-500">
-              <div class="text-8xl mb-4 animate-bounce">🧊</div>
-              <p class="text-xl font-black">No reports yet!</p>
-              <p class="text-lg font-bold opacity-75">
-                Click on the map to report activity! ❄️
+            <div class="text-center py-8 sm:py-10 lg:py-12 text-blue-500">
+              <div class="text-6xl sm:text-7xl lg:text-8xl mb-3 sm:mb-4 animate-bounce">🧊</div>
+              <p class="text-lg sm:text-xl font-black">No reports yet!</p>
+              <p class="text-base sm:text-lg font-bold opacity-75">
+                <span class="hidden sm:inline">Click</span><span class="sm:hidden">Tap</span>
+                on the map to report activity! ❄️
               </p>
             </div>
           <% else %>
-            <div id="reports" phx-update="stream" class="space-y-4">
+            <div id="reports" phx-update="stream" class="space-y-3 sm:space-y-4">
               <%= for {id, report} <- @streams.reports do %>
                 <div
                   id={id}
                   data-latitude={report.latitude}
                   data-longitude={report.longitude}
                   data-type={report.type}
-                  class="bg-gradient-to-r from-blue-50 to-red-50 border-l-6 border-red-400 p-4 rounded-r-2xl shadow-lg relative overflow-hidden"
+                  data-inserted-at={report.inserted_at}
+                  class="bg-gradient-to-r from-blue-50 to-red-50 border-l-4 sm:border-l-6 border-red-400 p-3 sm:p-4 rounded-r-lg sm:rounded-r-2xl shadow-lg relative overflow-hidden"
                 >
                   <div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/30">
                   </div>
                   <div class="relative z-10">
-                    <div class="flex items-center space-x-3 mb-2">
-                      <span class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-3 py-1 rounded-full text-sm font-black uppercase">
+                    <div class="flex items-center space-x-2 sm:space-x-3 mb-2 flex-wrap">
+                      <span class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-black uppercase">
                         {report_type_display(report.type)}
                       </span>
-                      <span class="text-blue-600 text-sm font-black flex items-center gap-1">
+                      <span class="text-blue-600 text-xs sm:text-sm font-black flex items-center gap-1">
                         ❄️ {format_time_ago(report.inserted_at)}
                       </span>
                     </div>
                     <%= if report.location_description do %>
-                      <p class="text-blue-700 font-bold text-lg">
-                        {report.location_description}
-                      </p>
+                      <div
+                        class="px-2 sm:px-3 py-2 bg-gradient-to-r from-blue-50 to-red-50 rounded-lg border border-blue-200 hover:border-blue-300 active:border-blue-400 cursor-pointer transition-all duration-200 hover:shadow-md active:shadow-sm mt-2 touch-manipulation"
+                        phx-click="fly_to_report"
+                        phx-value-lat={report.latitude}
+                        phx-value-lng={report.longitude}
+                        phx-value-address={report.location_description}
+                        title="Navigate to this location on the map"
+                      >
+                        <div class="font-bold text-blue-700 text-xs sm:text-sm leading-tight">
+                          {report.location_description}
+                        </div>
+                        <div class="text-xs text-blue-500 mt-1">
+                          📍
+                          <span class="hidden sm:inline">Click to navigate to location</span><span class="sm:hidden">Tap to navigate</span>
+                        </div>
+                      </div>
                     <% end %>
                     <%= if report.description do %>
-                      <p class="text-blue-600 text-sm mt-1 font-medium">{report.description}</p>
+                      <p class="text-blue-600 text-xs sm:text-sm mt-1 font-medium">
+                        {report.description}
+                      </p>
                     <% end %>
                   </div>
                 </div>
               <% end %>
             </div>
+            
+            <!-- Pagination Controls -->
+            <%= if @total_pages > 1 do %>
+              <div class="mt-6 border-t border-blue-200 pt-4">
+                <div class="flex items-center justify-between">
+                  <!-- Reports count info -->
+                  <div class="text-xs sm:text-sm text-blue-600 font-medium">
+                    Showing <%= (@current_page - 1) * @per_page + 1 %> - <%= min(@current_page * @per_page, @total_count) %> of <%= @total_count %> reports
+                  </div>
+                  
+                  <!-- Pagination buttons -->
+                  <div class="flex items-center gap-2">
+                    <!-- Previous button -->
+                    <button
+                      phx-click="previous_page"
+                      disabled={not @has_previous}
+                      class="px-3 py-1 text-xs sm:text-sm font-bold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
+                    >
+                      <span class="hidden sm:inline">← Previous</span>
+                      <span class="sm:hidden">←</span>
+                    </button>
+                    
+                    <!-- Page info -->
+                    <div class="flex items-center gap-1 text-xs sm:text-sm text-blue-600 font-medium">
+                      <span class="hidden sm:inline">Page</span>
+                      <span class="font-bold">{@current_page}</span>
+                      <span>of</span>
+                      <span class="font-bold">{@total_pages}</span>
+                    </div>
+                    
+                    <!-- Next button -->
+                    <button
+                      phx-click="next_page"
+                      disabled={not @has_next}
+                      class="px-3 py-1 text-xs sm:text-sm font-bold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
+                    >
+                      <span class="hidden sm:inline">Next →</span>
+                      <span class="sm:hidden">→</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            <% end %>
           <% end %>
         </div>
       </div>

@@ -32,7 +32,9 @@ const csrfToken = document
 let leafletMap = null;
 let reportPopup = null;
 let reportMarkers = new Map(); // Track markers by report ID
+let temporaryMarkers = []; // Track temporary markers
 let liveViewSocket = null; // Store the LiveView socket reference
+let browserFingerprint = null; // Store browser fingerprint
 
 // LiveView hook for map initialization
 const Hooks = {
@@ -47,6 +49,7 @@ const Hooks = {
         leafletMap.remove();
         leafletMap = null;
         reportMarkers.clear();
+        temporaryMarkers = []; // Clear temporary markers
       }
       liveViewSocket = null;
     },
@@ -162,8 +165,26 @@ window.addEventListener("phx:fly_to_address", (e) => {
   flyToAddress(e.detail.lat, e.detail.lng, e.detail.address);
 });
 
+window.addEventListener("phx:remove_report_marker", (e) => {
+  console.log("🗑️ Removing expired report marker:", e.detail.id);
+  removeReportMarker(e.detail.id);
+});
+
+window.addEventListener("phx:cleanup_completed", (e) => {
+  console.log("🧹 Cleanup completed:", e.detail.deleted_count, "reports removed");
+  // Refresh the map markers to ensure they're in sync
+  refreshMapMarkers();
+});
+
+// Generate browser fingerprint on page load
+browserFingerprint = generateBrowserFingerprint();
+console.log("🔍 Browser fingerprint generated:", browserFingerprint.substring(0, 16) + "...");
+
 // connect if there are any LiveViews on the page
 liveSocket.connect();
+
+// Set up periodic client-side cleanup every 5 minutes
+setInterval(cleanupExpiredReports, 5 * 60 * 1000);
 
 // expose liveSocket on window for web console debug logs and latency simulation:
 // >> liveSocket.enableDebug()
@@ -224,6 +245,9 @@ function initializeLeaflet() {
 
   // Load existing reports from DOM after map is ready
   loadExistingReportsFromDOM();
+  
+  // Watch for new reports being added to the DOM
+  setupReportObserver();
 }
 
 function loadExistingReportsFromDOM() {
@@ -233,48 +257,155 @@ function loadExistingReportsFromDOM() {
   const reportElements = document.querySelectorAll('#reports [id^="reports-"]');
 
   reportElements.forEach((reportElement) => {
-    const lat = reportElement.dataset.latitude;
-    const lng = reportElement.dataset.longitude;
+    const lat = parseFloat(reportElement.dataset.latitude);
+    const lng = parseFloat(reportElement.dataset.longitude);
     const type = reportElement.dataset.type;
     const id = reportElement.id.replace("reports-", "");
 
     if (lat && lng && type) {
       console.log(`📍 Adding existing report: ${type} at ${lat}, ${lng}`);
+      
+      // Remove any temporary marker that matches this location
+      removeTemporaryMarker(lat, lng, type);
+      
+      // Add the real marker
       addReportMarker(lat, lng, type, false, id);
     }
   });
+}
+
+function setupReportObserver() {
+  const reportsContainer = document.getElementById('reports');
+  if (!reportsContainer) return;
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === Node.ELEMENT_NODE && node.id && node.id.startsWith('reports-')) {
+          const lat = parseFloat(node.dataset.latitude);
+          const lng = parseFloat(node.dataset.longitude);
+          const type = node.dataset.type;
+          const id = node.id.replace("reports-", "");
+
+          if (lat && lng && type) {
+            console.log(`📍 New report detected in DOM: ${type} at ${lat}, ${lng}`);
+            
+            // Remove any temporary marker that matches this location
+            removeTemporaryMarker(lat, lng, type);
+            
+            // Add the real marker
+            addReportMarker(lat, lng, type, false, id);
+          }
+        }
+      });
+    });
+  });
+
+  observer.observe(reportsContainer, {
+    childList: true,
+    subtree: true
+  });
+
+  console.log("👀 Report observer set up");
 }
 
 function setupAddressSearch() {
   const searchInput = document.getElementById("address-search");
   if (!searchInput) return;
 
-  // Handle Enter key press
-  searchInput.addEventListener("keydown", function (e) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const suggestions = document.querySelectorAll(".address-suggestion");
-      if (suggestions.length > 0) {
-        // Select first suggestion on Enter
-        suggestions[0].click();
-      }
-    }
+  let selectedSuggestionIndex = -1;
+  let isSearchActive = false;
 
-    // Handle escape key to hide suggestions
-    if (e.key === "Escape") {
-      hideAddressSuggestions();
+  // Show overlay when input is focused
+  searchInput.addEventListener("focus", function() {
+    showSearchOverlay();
+    isSearchActive = true;
+    if (this.value.length > 0) {
+      this.select(); // Select all text for easy replacement
     }
   });
 
-  // Hide suggestions when clicking outside
+  // Hide overlay when input loses focus (but only if no suggestions visible)
+  searchInput.addEventListener("blur", function() {
+    // Small delay to allow for clicking on suggestions
+    setTimeout(() => {
+      if (!document.querySelector("#address-suggestions:not(.hidden)")) {
+        hideSearchOverlay();
+        isSearchActive = false;
+      }
+    }, 150);
+  });
+
+  // Handle keyboard navigation
+  searchInput.addEventListener("keydown", function (e) {
+    const suggestions = document.querySelectorAll(".address-suggestion");
+    
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedSuggestionIndex = Math.min(selectedSuggestionIndex + 1, suggestions.length - 1);
+      highlightSuggestion(suggestions, selectedSuggestionIndex);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedSuggestionIndex = Math.max(selectedSuggestionIndex - 1, -1);
+      highlightSuggestion(suggestions, selectedSuggestionIndex);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (selectedSuggestionIndex >= 0 && suggestions[selectedSuggestionIndex]) {
+        suggestions[selectedSuggestionIndex].click();
+      } else if (suggestions.length > 0) {
+        // Select first suggestion if none highlighted
+        suggestions[0].click();
+      }
+      selectedSuggestionIndex = -1;
+      hideSearchOverlay();
+      isSearchActive = false;
+    } else if (e.key === "Escape") {
+      hideAddressSuggestions();
+      hideSearchOverlay();
+      selectedSuggestionIndex = -1;
+      isSearchActive = false;
+      searchInput.blur();
+    } else {
+      // Reset selection when typing
+      selectedSuggestionIndex = -1;
+    }
+  });
+
+  // Hide suggestions and overlay when clicking outside
   document.addEventListener("click", function (e) {
     if (
       !e.target.closest("#address-search") &&
       !e.target.closest("#address-suggestions")
     ) {
       hideAddressSuggestions();
+      hideSearchOverlay();
+      selectedSuggestionIndex = -1;
+      isSearchActive = false;
     }
   });
+
+  // Click on overlay to hide search
+  const overlay = document.getElementById("search-overlay");
+  if (overlay) {
+    overlay.addEventListener("click", function() {
+      hideAddressSuggestions();
+      hideSearchOverlay();
+      selectedSuggestionIndex = -1;
+      isSearchActive = false;
+      searchInput.blur();
+    });
+  }
+}
+
+function highlightSuggestion(suggestions, index) {
+  // Remove previous highlights
+  suggestions.forEach(s => s.classList.remove("bg-gradient-to-r", "from-blue-50", "to-red-50"));
+  
+  // Highlight selected suggestion
+  if (index >= 0 && suggestions[index]) {
+    suggestions[index].classList.add("bg-gradient-to-r", "from-blue-50", "to-red-50");
+    suggestions[index].scrollIntoView({ block: "nearest" });
+  }
 }
 
 function showAddressSuggestions(suggestions) {
@@ -289,9 +420,10 @@ function showAddressSuggestions(suggestions) {
   const suggestionsHTML = suggestions
     .map(
       (suggestion) => `
-        <div class="address-suggestion px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-blue-100 last:border-b-0"
+        <div class="address-suggestion px-4 py-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-red-50 cursor-pointer border-b border-blue-100 last:border-b-0 transition-all duration-200"
              onclick="selectAddress(${suggestion.lat}, ${suggestion.lng}, '${suggestion.address.replace(/'/g, "\\'")}')">
-          <div class="font-bold text-blue-700">${suggestion.address}</div>
+          <div class="font-bold text-blue-700 text-sm">${suggestion.address}</div>
+          <div class="text-xs text-blue-500 mt-1">📍 Click to navigate</div>
         </div>
       `,
     )
@@ -309,17 +441,35 @@ function hideAddressSuggestions() {
   }
 }
 
+function showSearchOverlay() {
+  const overlay = document.getElementById("search-overlay");
+  if (overlay) {
+    overlay.classList.remove("hidden");
+    overlay.classList.add("opacity-100");
+  }
+}
+
+function hideSearchOverlay() {
+  const overlay = document.getElementById("search-overlay");
+  if (overlay) {
+    overlay.classList.add("hidden");
+    overlay.classList.remove("opacity-100");
+  }
+}
+
 function selectAddress(lat, lng, address) {
   console.log(`📍 Address selected: ${address} at ${lat}, ${lng}`);
 
-  // Update search input
+  // Update search input with the full formatted address
   const searchInput = document.getElementById("address-search");
   if (searchInput) {
     searchInput.value = address;
+    searchInput.blur(); // Remove focus to hide mobile keyboard
   }
 
-  // Hide suggestions
+  // Hide suggestions and overlay
   hideAddressSuggestions();
+  hideSearchOverlay();
 
   // Send event to LiveView using the stored socket reference
   if (liveViewSocket) {
@@ -342,32 +492,50 @@ function flyToAddress(lat, lng, address) {
     duration: 1.5,
   });
 
-  // Add a temporary marker to show the searched location
+  // Add a temporary marker to show the searched location with pulse animation
   const tempMarker = L.marker([lat, lng], {
     icon: L.divIcon({
       html: `<div style="
         background: linear-gradient(135deg, #3b82f6, #ef4444); 
         border: 3px solid white; 
         border-radius: 50%; 
-        width: 30px; 
-        height: 30px; 
+        width: 40px; 
+        height: 40px; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
-        font-size: 16px;
+        font-size: 20px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        transition: transform 0.2s;
-      ">📍</div>`,
+        animation: pulse 2s infinite;
+      ">🎯</div>
+      <style>
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.1); opacity: 0.8; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      </style>`,
       className: "temp-search-marker",
-      iconSize: [30, 30],
-      iconAnchor: [15, 15],
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
     }),
   }).addTo(leafletMap);
 
-  // Remove the temporary marker after 3 seconds
+  // Add popup with address info - show full address
+  tempMarker.bindPopup(`
+    <div class="text-center p-3 max-w-xs">
+      <div class="text-lg mb-2">🎯</div>
+      <strong class="text-blue-600">Found Location</strong><br>
+      <div class="text-sm text-gray-700 mt-2 leading-relaxed">${address}</div>
+    </div>
+  `).openPopup();
+
+  // Remove the temporary marker after 5 seconds
   setTimeout(() => {
-    leafletMap.removeLayer(tempMarker);
-  }, 3000);
+    if (leafletMap.hasLayer(tempMarker)) {
+      leafletMap.removeLayer(tempMarker);
+    }
+  }, 5000);
 }
 
 function showReportPopup(latlng) {
@@ -424,6 +592,7 @@ window.submitReport = function (lat, lng, type) {
       latitude: parseFloat(lat),
       longitude: parseFloat(lng),
       type: type,
+      fingerprint: browserFingerprint
     });
   } else {
     console.log("❌ LiveView socket not available");
@@ -435,6 +604,60 @@ window.submitReport = function (lat, lng, type) {
 
 // Make selectAddress globally available
 window.selectAddress = selectAddress;
+
+// Browser fingerprinting for better rate limiting
+function generateBrowserFingerprint() {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.textBaseline = 'top';
+  ctx.font = '14px Arial';
+  ctx.fillText('Browser fingerprint', 2, 2);
+  
+  const fingerprint = {
+    screen: `${screen.width}x${screen.height}x${screen.colorDepth}`,
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    language: navigator.language,
+    languages: navigator.languages ? navigator.languages.join(',') : '',
+    platform: navigator.platform,
+    userAgent: navigator.userAgent,
+    cookieEnabled: navigator.cookieEnabled,
+    doNotTrack: navigator.doNotTrack || 'unspecified',
+    hardwareConcurrency: navigator.hardwareConcurrency || 0,
+    deviceMemory: navigator.deviceMemory || 0,
+    canvas: canvas.toDataURL(),
+    touchSupport: 'ontouchstart' in window,
+    webgl: getWebGLFingerprint()
+  };
+  
+  // Create hash of the fingerprint
+  const fpString = Object.values(fingerprint).join('|');
+  return hashString(fpString);
+}
+
+function getWebGLFingerprint() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return 'no-webgl';
+    
+    const vendor = gl.getParameter(gl.VENDOR);
+    const renderer = gl.getParameter(gl.RENDERER);
+    return `${vendor}~${renderer}`;
+  } catch (e) {
+    return 'webgl-error';
+  }
+}
+
+function hashString(str) {
+  let hash = 0;
+  if (str.length === 0) return hash.toString();
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return Math.abs(hash).toString(36);
+}
 
 // Function to add report markers with emojis
 function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
@@ -476,6 +699,14 @@ function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
   // Store marker if it has a report ID
   if (reportId) {
     reportMarkers.set(reportId, marker);
+  } else if (isTemporary) {
+    // Track temporary markers so we can remove them later
+    temporaryMarkers.push({
+      marker: marker,
+      lat: lat,
+      lng: lng,
+      type: type
+    });
   }
 
   return marker;
@@ -487,6 +718,25 @@ function removeReportMarker(reportId) {
     const marker = reportMarkers.get(reportId);
     leafletMap.removeLayer(marker);
     reportMarkers.delete(reportId);
+  }
+}
+
+// Function to remove temporary markers that match the real report
+function removeTemporaryMarker(lat, lng, type) {
+  const threshold = 0.0001; // Small threshold for coordinate matching
+  
+  for (let i = temporaryMarkers.length - 1; i >= 0; i--) {
+    const temp = temporaryMarkers[i];
+    if (
+      Math.abs(temp.lat - lat) < threshold && 
+      Math.abs(temp.lng - lng) < threshold && 
+      temp.type === type
+    ) {
+      console.log("🧹 Removing temporary marker for real report");
+      leafletMap.removeLayer(temp.marker);
+      temporaryMarkers.splice(i, 1);
+      break; // Only remove the first match
+    }
   }
 }
 
@@ -550,7 +800,93 @@ function loadExistingReports(reports) {
   });
 }
 
-// Add CSS for popup z-index
+// Function to refresh map markers based on current DOM state
+function refreshMapMarkers() {
+  if (!leafletMap) return;
+  
+  console.log("🔄 Refreshing map markers from DOM");
+  
+  // Clear all existing markers
+  reportMarkers.forEach((marker, reportId) => {
+    leafletMap.removeLayer(marker);
+  });
+  reportMarkers.clear();
+  
+  // Clear temporary markers
+  temporaryMarkers.forEach(temp => {
+    leafletMap.removeLayer(temp.marker);
+  });
+  temporaryMarkers = [];
+  
+  // Reload markers from current DOM state
+  loadExistingReportsFromDOM();
+}
+
+// Function to periodically check for expired reports on client-side
+function cleanupExpiredReports() {
+  if (!leafletMap) return;
+  
+  const now = new Date();
+  const expiredIds = [];
+  
+  // Check DOM elements for expired reports (4 hours = 4 * 60 * 60 * 1000 ms)
+  const reportElements = document.querySelectorAll('#reports [id^="reports-"]');
+  
+  reportElements.forEach(element => {
+    const insertedAt = element.dataset.insertedAt;
+    if (insertedAt) {
+      const insertedTime = new Date(insertedAt);
+      const expiresAt = new Date(insertedTime.getTime() + 4 * 60 * 60 * 1000);
+      
+      if (now > expiresAt) {
+        const reportId = element.id.replace("reports-", "");
+        expiredIds.push(reportId);
+        
+        // Remove the DOM element
+        element.remove();
+        
+        // Remove marker from map
+        removeReportMarker(reportId);
+      }
+    }
+  });
+  
+  if (expiredIds.length > 0) {
+    console.log(`🧹 Client-side cleanup: removed ${expiredIds.length} expired reports`);
+  }
+}
+
+
+// No tooltip JavaScript needed - using static explanatory text instead
+
+// Add mobile-specific event listeners
+document.addEventListener('DOMContentLoaded', function() {
+  // Improve mobile scrolling
+  document.body.style.webkitOverflowScrolling = 'touch';
+  
+  // Handle mobile orientation changes
+  window.addEventListener('orientationchange', function() {
+    // Delay to allow for orientation change completion
+    setTimeout(() => {
+      if (leafletMap) {
+        leafletMap.invalidateSize();
+      }
+    }, 500);
+  });
+  
+  // Handle mobile keyboard visibility
+  const addressInput = document.getElementById('address-search');
+  if (addressInput && isMobileDevice()) {
+    addressInput.addEventListener('focus', function() {
+      // On mobile, scroll to input when keyboard appears
+      setTimeout(() => {
+        this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 300);
+    });
+  }
+});
+
+// Add CSS for popup z-index and search overlay
 const style = document.createElement("style");
 style.textContent = `
   .custom-popup .leaflet-popup-content-wrapper {
@@ -558,6 +894,67 @@ style.textContent = `
   }
   .leaflet-popup {
     z-index: 9999 !important;
+  }
+  
+  /* Ensure address search components have proper z-index */
+  #address-search {
+    position: relative;
+    z-index: 10000 !important;
+  }
+  
+  #address-suggestions {
+    z-index: 10001 !important;
+  }
+  
+  #search-overlay {
+    z-index: 9998 !important;
+  }
+  
+  /* Smooth transitions for overlay */
+  #search-overlay {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+  }
+  
+  #search-overlay:not(.hidden) {
+    opacity: 1;
+  }
+  
+  /* No tooltip styles needed - using static explanatory text instead */
+  
+  /* Touch-friendly button styling */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Mobile-specific improvements */
+  @media (max-width: 768px) {
+    /* Improve touch targets */
+    button, .cursor-pointer {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Better mobile typography */
+    body {
+      -webkit-text-size-adjust: 100%;
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    /* Improve mobile scrolling */
+    * {
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Mobile-friendly map popup */
+    .leaflet-popup-content {
+      margin: 8px 12px;
+      line-height: 1.4;
+    }
+    
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px;
+    }
   }
 `;
 document.head.appendChild(style);

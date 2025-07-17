@@ -110,4 +110,23 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Hackney
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+
+  # hCaptcha configuration for production
+  hcaptcha_site_key =
+    System.get_env("HCAPTCHA_SITE_KEY") ||
+      raise """
+      environment variable HCAPTCHA_SITE_KEY is missing.
+      You can get this from your hCaptcha dashboard.
+      """
+
+  hcaptcha_secret =
+    System.get_env("HCAPTCHA_SECRET") ||
+      raise """
+      environment variable HCAPTCHA_SECRET is missing.
+      You can get this from your hCaptcha dashboard.
+      """
+
+  config :ice_reporter,
+    hcaptcha_site_key: hcaptcha_site_key,
+    hcaptcha_secret: hcaptcha_secret
 end

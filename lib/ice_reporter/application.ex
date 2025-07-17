@@ -15,6 +15,7 @@ defmodule IceReporter.Application do
       {DNSCluster, query: Application.get_env(:ice_reporter, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: IceReporter.PubSub},
       IceReporter.RateLimiter,
+      IceReporter.CleanupWorker,
       # Start a worker by calling: IceReporter.Worker.start_link(arg)
       # {IceReporter.Worker, arg},
       # Start to serve requests, typically the last entry
