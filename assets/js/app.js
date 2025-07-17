@@ -221,6 +221,28 @@ function initializeLeaflet() {
 
   // Set up address search functionality
   setupAddressSearch();
+
+  // Load existing reports from DOM after map is ready
+  loadExistingReportsFromDOM();
+}
+
+function loadExistingReportsFromDOM() {
+  console.log("📍 Loading existing reports from DOM...");
+
+  // Find all report elements in the DOM
+  const reportElements = document.querySelectorAll('#reports [id^="reports-"]');
+
+  reportElements.forEach((reportElement) => {
+    const lat = reportElement.dataset.latitude;
+    const lng = reportElement.dataset.longitude;
+    const type = reportElement.dataset.type;
+    const id = reportElement.id.replace("reports-", "");
+
+    if (lat && lng && type) {
+      console.log(`📍 Adding existing report: ${type} at ${lat}, ${lng}`);
+      addReportMarker(lat, lng, type, false, id);
+    }
+  });
 }
 
 function setupAddressSearch() {
@@ -334,7 +356,7 @@ function flyToAddress(lat, lng, address) {
         justify-content: center; 
         font-size: 16px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        animation: pulse 2s infinite;
+        transition: transform 0.2s;
       ">📍</div>`,
       className: "temp-search-marker",
       iconSize: [30, 30],
@@ -421,7 +443,7 @@ function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
   const emoji = getEmojiForType(type);
   const markerColor = isTemporary ? "#fbbf24" : getColorForType(type);
 
-  // Create custom marker with emoji
+  // Create custom marker with emoji - removed blinking animation
   const markerIcon = L.divIcon({
     html: `<div style="
       background: ${markerColor}; 
@@ -434,7 +456,7 @@ function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
       justify-content: center; 
       font-size: 20px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      ${isTemporary ? "animation: pulse 1s infinite;" : ""}
+      transition: transform 0.2s;
     ">${emoji}</div>`,
     className: "custom-emoji-marker",
     iconSize: [40, 40],
