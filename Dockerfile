@@ -2,7 +2,7 @@
 # instead of Alpine to avoid DNS resolution issues in production.
 ARG ELIXIR_VERSION=1.15.7
 ARG OTP_VERSION=26.1.2
-ARG DEBIAN_VERSION=bullseye-20230612-slim
+ARG DEBIAN_VERSION=bookworm-20240130-slim
 
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}"
 ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
@@ -72,6 +72,9 @@ ENV LC_ALL en_US.UTF-8
 
 WORKDIR "/app"
 RUN chown nobody /app
+
+# Create data directory with proper permissions for nobody user
+RUN mkdir -p /data && chown nobody:root /data
 
 # set runner ENV
 ENV MIX_ENV="prod"
