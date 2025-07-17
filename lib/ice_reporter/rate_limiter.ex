@@ -17,6 +17,10 @@ defmodule IceReporter.RateLimiter do
   Check if IP address has exceeded rate limit.
   Returns {:ok, remaining_count} or {:rate_limited, next_reset_time}
   """
+  def increment_count(ip_address) do
+    GenServer.call(__MODULE__, {:increment, ip_address})
+  end
+
   def check_rate_limit(ip_address) do
     GenServer.call(__MODULE__, {:check_rate_limit, ip_address})
   end
