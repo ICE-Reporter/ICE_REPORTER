@@ -81,7 +81,4 @@ COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/ice_reporter 
 
 USER nobody
 
-# Create data directory for SQLite database
-RUN mkdir -p /data
-
 CMD ["/app/bin/server"]
