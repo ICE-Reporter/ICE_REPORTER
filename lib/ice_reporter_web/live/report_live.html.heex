@@ -106,6 +106,7 @@
         <div
           id="map-container"
           phx-hook="MapContainer"
+          phx-update="ignore"
           class="h-96 lg:h-[500px] relative bg-gradient-to-br from-blue-100 to-red-100 rounded-b-3xl"
         >
           <!-- Leaflet will render here -->
@@ -135,9 +136,12 @@
               </p>
             </div>
           <% else %>
-            <div class="space-y-4">
-              <%= for report <- @reports do %>
-                <div class="bg-gradient-to-r from-blue-50 to-red-50 border-l-6 border-red-400 p-4 rounded-r-2xl shadow-lg relative overflow-hidden">
+            <div id="reports" phx-update="stream" class="space-y-4">
+              <%= for {id, report} <- @streams.reports do %>
+                <div
+                  id={id}
+                  class="bg-gradient-to-r from-blue-50 to-red-50 border-l-6 border-red-400 p-4 rounded-r-2xl shadow-lg relative overflow-hidden"
+                >
                   <div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/30">
                   </div>
                   <div class="relative z-10">
