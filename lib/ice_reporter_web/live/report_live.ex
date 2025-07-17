@@ -148,7 +148,14 @@ defmodule IceReporterWeb.ReportLive do
 
   def format_time_ago(datetime) do
     now = DateTime.utc_now()
-    diff_seconds = DateTime.diff(now, datetime, :second)
+    # Convert NaiveDateTime to UTC DateTime if needed
+    utc_datetime =
+      case datetime do
+        %DateTime{} -> datetime
+        %NaiveDateTime{} -> DateTime.from_naive!(datetime, "Etc/UTC")
+      end
+
+    diff_seconds = DateTime.diff(now, utc_datetime, :second)
 
     cond do
       diff_seconds < 60 ->
@@ -166,5 +173,25 @@ defmodule IceReporterWeb.ReportLive do
         days = div(diff_seconds, 86400)
         "#{days} day#{if days == 1, do: "", else: "s"} ago"
     end
+  end
+
+  now = DateTime.utc_now()
+  diff_seconds = DateTime.diff(now, datetime, :second)
+
+  cond do
+    diff_seconds < 60 ->
+      "#{diff_seconds} seconds ago"
+
+    diff_seconds < 3600 ->
+      minutes = div(diff_seconds, 60)
+      "#{minutes} minute#{if minutes == 1, do: "", else: "s"} ago"
+
+    diff_seconds < 86400 ->
+      hours = div(diff_seconds, 3600)
+      "#{hours} hour#{if hours == 1, do: "", else: "s"} ago"
+
+    true ->
+      days = div(diff_seconds, 86400)
+      "#{days} day#{if days == 1, do: "", else: "s"} ago"
   end
 end
