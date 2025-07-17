@@ -1,374 +1,170 @@
 defmodule IceReporterWeb.ReportLive do
   use IceReporterWeb, :live_view
-
   alias IceReporter.Reports
-  alias IceReporter.Report
   alias IceReporter.RateLimiter
 
   def mount(_params, _session, socket) do
-    reports = Reports.list_active_reports()
-
-    # Subscribe to real-time updates
+    # Subscribe to new reports for real-time updates
     Phoenix.PubSub.subscribe(IceReporter.PubSub, "reports")
 
-    # Store client IP in socket assigns during mount
-    client_ip = get_client_ip_from_connect_info(socket)
+    # Get client IP and store in socket assigns
+    client_ip =
+      case get_connect_info(socket, :peer_data) do
+        %{address: ip} -> :inet.ntoa(ip) |> to_string()
+        _ -> "127.0.0.1"
+      end
+
+    reports = Reports.list_active_reports()
 
     {:ok,
      socket
-     |> assign(:reports, reports)
      |> assign(:reports_empty?, reports == [])
-     |> assign(:address_suggestions, [])
-     |> assign(:show_captcha, false)
-     |> assign(:captcha_token, nil)
-     |> assign(:rate_limit_message, nil)
      |> assign(:client_ip, client_ip)
-     |> push_event("load_existing_reports", %{reports: format_reports_for_js(reports)})}
-  end
-
-  # Rate limit check event handler
-  def handle_event("check_rate_limit", _params, socket) do
-    ip_address = socket.assigns.client_ip
-
-    case RateLimiter.check_rate_limit(ip_address) do
-      {:ok, remaining} ->
-        IO.puts("✅ Rate limit OK: #{remaining} reports remaining")
-
-        {:noreply,
-         socket
-         |> assign(:show_captcha, false)
-         |> assign(:rate_limit_message, nil)}
-
-      {:rate_limited, reset_time} ->
-        reset_minutes = div(reset_time - System.system_time(:second), 60)
-
-        message =
-          "Rate limit reached! Please complete captcha verification. Limit resets in #{reset_minutes} minutes."
-
-        IO.puts("⚠️ Rate limited: #{message}")
-
-        {:noreply,
-         socket
-         |> assign(:show_captcha, true)
-         |> assign(:rate_limit_message, message)}
-    end
-  end
-
-  # Handle hCaptcha token submission
-  # Handle canceling captcha
-  def handle_event("cancel_captcha", _params, socket) do
-    IO.puts("❌ Captcha cancelled by user")
-
-    {:noreply,
-     socket
+     |> assign(:rate_limit_message, nil)
      |> assign(:show_captcha, false)
-     |> assign(:captcha_token, nil)
-     |> assign(
-       :rate_limit_message,
-       "Captcha verification cancelled. Please try again when ready."
-     )}
+     |> stream(:reports, reports)}
   end
 
-  def handle_event("captcha_verified", %{"token" => token}, socket) do
-    IO.puts("🔐 Captcha token received: #{String.slice(token, 0..20)}...")
-
-    {:noreply,
-     socket
-     |> assign(:captcha_token, token)
-     |> assign(:show_captcha, false)
-     |> assign(:rate_limit_message, nil)}
-  end
-
-  # Map report event handler with rate limiting and captcha
   def handle_event("map_report", params, socket) do
     IO.puts("🗺️ MAP REPORT EVENT RECEIVED!")
     IO.inspect(params, label: "Map report params")
 
-    ip_address = socket.assigns.client_ip
+    lat = params["latitude"]
+    lng = params["longitude"]
+    type = params["type"]
 
-    # Check rate limit first
-    case RateLimiter.check_rate_limit(ip_address) do
+    IO.puts("📍 Creating report with coords: #{lat}, #{lng}, type: #{type}")
+
+    # Check rate limit
+    case RateLimiter.check_rate_limit(socket.assigns.client_ip) do
       {:ok, _remaining} ->
-        # Within rate limit, proceed without captcha
-        create_and_process_report(params, socket, ip_address, false)
+        # Rate limit OK, proceed with report creation
+        create_report_directly(socket, lat, lng, type)
 
-      {:rate_limited, _reset_time} ->
-        # Rate limited, require captcha verification
-        captcha_token = socket.assigns.captcha_token
+      {:rate_limited, reset_time} ->
+        # Rate limit exceeded, show captcha
+        reset_minutes = div(reset_time, 60)
 
-        if captcha_token do
-          # Verify captcha token
-          case verify_hcaptcha(captcha_token) do
-            {:ok, _response} ->
-              IO.puts("✅ hCaptcha verified successfully")
-              create_and_process_report(params, socket, ip_address, true)
-
-            {:error, reason} ->
-              IO.puts("❌ hCaptcha verification failed: #{reason}")
-
-              {:noreply,
-               socket
-               |> assign(:show_captcha, true)
-               |> assign(:captcha_token, nil)
-               |> assign(:rate_limit_message, "Captcha verification failed. Please try again.")}
-          end
-        else
-          # No captcha token, show captcha
-          {:noreply,
-           socket
-           |> assign(:show_captcha, true)
-           |> assign(
-             :rate_limit_message,
-             "Rate limit reached! Please complete captcha verification."
-           )}
-        end
-    end
-  end
-
-  # Address search event handler with debugging
-  def handle_event("search_address", %{"value" => query}, socket) do
-    IO.puts("🔍 ADDRESS SEARCH EVENT RECEIVED!")
-    IO.inspect(query, label: "Search query")
-
-    if String.length(query) >= 4 do
-      IO.puts("📍 Query long enough, searching...")
-
-      case search_addresses(query) do
-        {:ok, suggestions} ->
-          IO.puts("✅ Found #{length(suggestions)} suggestions")
-          {:noreply, assign(socket, :address_suggestions, suggestions)}
-
-        {:error, reason} ->
-          IO.puts("❌ Address search failed: #{reason}")
-          {:noreply, assign(socket, :address_suggestions, [])}
-      end
-    else
-      IO.puts("📍 Query too short, clearing suggestions")
-      {:noreply, assign(socket, :address_suggestions, [])}
-    end
-  end
-
-  def handle_event(
-        "select_address",
-        %{"lat" => lat, "lng" => lng, "display_name" => display_name},
-        socket
-      ) do
-    IO.puts("🎯 ADDRESS SELECTED!")
-    IO.inspect({lat, lng, display_name}, label: "Selected address")
-
-    {:noreply,
-     socket
-     |> assign(:address_suggestions, [])
-     |> push_event("fly_to_location", %{latitude: lat, longitude: lng})}
-  end
-
-  # Clear suggestions when input is cleared
-  def handle_event("clear_suggestions", _params, socket) do
-    IO.puts("🧹 CLEARING SUGGESTIONS")
-    {:noreply, assign(socket, :address_suggestions, [])}
-  end
-
-  # Handle PubSub broadcasts
-  def handle_info({:new_report, report}, socket) do
-    IO.puts("📡 PubSub: New report received")
-
-    updated_reports = [report | socket.assigns.reports]
-
-    {:noreply,
-     socket
-     |> assign(:reports, updated_reports)
-     |> assign(:reports_empty?, false)
-     |> push_event("add_report_marker", %{
-       id: report.id,
-       latitude: report.latitude,
-       longitude: report.longitude,
-       type: report.type
-     })}
-  end
-
-  # Private helper functions
-  defp create_and_process_report(params, socket, ip_address, used_captcha) do
-    case create_report_from_params(params) do
-      {:ok, report} ->
-        IO.puts("✅ Report created successfully: #{report.id}")
-
-        # Record the submission for rate limiting
-        RateLimiter.record_submission(ip_address)
-
-        # Broadcast to all connected clients
-        Phoenix.PubSub.broadcast(
-          IceReporter.PubSub,
-          "reports",
-          {:new_report, report}
-        )
-
-        # Update local state
-        updated_reports = [report | socket.assigns.reports]
-
-        success_message =
-          if used_captcha do
-            "Report submitted successfully with verification!"
-          else
-            "Report submitted successfully!"
-          end
+        message =
+          "Rate limit reached. Please wait #{reset_minutes} minutes or complete the captcha below."
 
         {:noreply,
          socket
-         |> assign(:reports, updated_reports)
-         |> assign(:reports_empty?, false)
-         |> assign(:captcha_token, nil)
-         |> assign(:show_captcha, false)
-         |> assign(:rate_limit_message, success_message)
-         |> push_event("add_report_marker", %{
-           id: report.id,
-           latitude: report.latitude,
-           longitude: report.longitude,
-           type: report.type
-         })}
+         |> assign(:rate_limit_message, message)
+         |> assign(:show_captcha, true)}
+    end
+  end
+
+  def handle_event("search_address", %{"value" => query}, socket) do
+    # TODO: Implement address search autocomplete
+    IO.puts("🔍 Address search: #{query}")
+    {:noreply, socket}
+  end
+
+  def handle_event("captcha_verified", %{"token" => token}, socket) do
+    # TODO: Verify hCaptcha token server-side
+    IO.puts("🔐 Captcha verified with token: #{token}")
+
+    # For now, assume verification passed and clear captcha/rate limit
+    {:noreply,
+     socket
+     |> assign(:show_captcha, false)
+     |> assign(:rate_limit_message, nil)}
+  end
+
+  def handle_event("cancel_captcha", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:show_captcha, false)
+     |> assign(:rate_limit_message, nil)}
+  end
+
+  def handle_info({:new_report, report}, socket) do
+    IO.puts("📡 PubSub: New report received")
+
+    {:noreply,
+     socket
+     |> assign(:reports_empty?, false)
+     |> stream(:reports, [report])}
+  end
+
+  defp create_report_directly(socket, lat, lng, type) do
+    # Get address from coordinates
+    address = get_address_from_coords(lat, lng)
+    IO.puts("🏠 Address: #{address}")
+
+    # Create the report
+    case Reports.create_report(%{
+           type: type,
+           description: "Reported via map click",
+           latitude: lat,
+           longitude: lng,
+           location_description: address
+         }) do
+      {:ok, report} ->
+        IO.puts("✅ Report created successfully: #{report.id}")
+
+        # Increment rate limit counter
+        RateLimiter.increment_count(socket.assigns.client_ip)
+
+        # Broadcast to all connected clients
+        Phoenix.PubSub.broadcast(IceReporter.PubSub, "reports", {:new_report, report})
+
+        {:noreply, socket}
 
       {:error, changeset} ->
-        IO.puts("❌ Failed to create report")
-        IO.inspect(changeset.errors, label: "Changeset errors")
+        IO.puts("❌ Failed to create report:")
+        IO.inspect(changeset.errors)
         {:noreply, socket}
     end
   end
 
-  defp create_report_from_params(params) do
-    # Extract coordinates and type
-    latitude = Map.get(params, "latitude")
-    longitude = Map.get(params, "longitude")
-    type = Map.get(params, "type")
-
-    IO.puts("📍 Creating report with coords: #{latitude}, #{longitude}, type: #{type}")
-
-    # Reverse geocode to get address
-    location_description =
-      case reverse_geocode(latitude, longitude) do
-        {:ok, address} -> address
-        {:error, _} -> "Location: #{latitude}, #{longitude}"
-      end
-
-    IO.puts("🏠 Address: #{location_description}")
-
-    # Create report
-    Reports.create_report(%{
-      type: type,
-      latitude: latitude,
-      longitude: longitude,
-      location_description: location_description,
-      description: "Reported via map click"
-    })
-  end
-
-  defp verify_hcaptcha(token) do
-    # For now, we'll implement a simple mock verification
-    # In production, you'd call the hCaptcha API with your secret key
-
-    # Mock successful verification for development
-    if String.length(token) > 10 do
-      {:ok, %{"success" => true}}
-    else
-      {:error, "Invalid token"}
-    end
-  end
-
-  defp get_client_ip_from_connect_info(socket) do
-    # Extract client IP from the socket during mount
-    case get_connect_info(socket, :peer_data) do
-      %{address: address} -> :inet.ntoa(address) |> to_string()
-      # fallback for development
-      _ -> "127.0.0.1"
-    end
-  end
-
-  defp search_addresses(query) do
-    url = "https://nominatim.openstreetmap.org/search"
-
-    params = [
-      q: query,
-      format: "json",
-      limit: 5,
-      countrycodes: "us",
-      addressdetails: 1
-    ]
-
-    case Req.get(url, params: params) do
-      {:ok, %{status: 200, body: results}} ->
-        suggestions =
-          Enum.map(results, fn result ->
-            %{
-              display_name: result["display_name"],
-              lat: String.to_float(result["lat"]),
-              lng: String.to_float(result["lon"])
-            }
-          end)
-
-        {:ok, suggestions}
-
-      {:error, reason} ->
-        {:error, reason}
-    end
-  rescue
-    error ->
-      IO.puts("🚨 Address search error: #{inspect(error)}")
-      {:error, "Search failed"}
-  end
-
-  defp reverse_geocode(latitude, longitude) do
+  defp get_address_from_coords(lat, lng) do
     url = "https://nominatim.openstreetmap.org/reverse"
 
     params = [
-      lat: latitude,
-      lon: longitude,
       format: "json",
+      lat: lat,
+      lon: lng,
+      zoom: 18,
       addressdetails: 1
     ]
 
     case Req.get(url, params: params) do
-      {:ok, %{status: 200, body: result}} ->
-        address = result["display_name"] || "Unknown location"
-        {:ok, address}
+      {:ok, %{status: 200, body: %{"display_name" => address}}} ->
+        address
 
-      {:error, reason} ->
-        {:error, reason}
+      _error ->
+        "Location coordinates: #{lat}, #{lng}"
     end
-  rescue
-    _error ->
-      {:error, "Reverse geocoding failed"}
   end
 
-  defp format_reports_for_js(reports) do
-    Enum.map(reports, fn report ->
-      %{
-        id: report.id,
-        latitude: report.latitude,
-        longitude: report.longitude,
-        type: report.type
-      }
-    end)
-  end
+  # Helper functions for template
+  def report_type_display("checkpoint"), do: "Checkpoint"
+  def report_type_display("facility"), do: "Facility"
+  def report_type_display("patrol"), do: "Patrol"
+  def report_type_display("vehicle"), do: "Vehicle"
+  def report_type_display(_), do: "Unknown"
 
-  defp format_time_ago(naive_datetime) do
-    # Convert NaiveDateTime to UTC DateTime for comparison
-    datetime = DateTime.from_naive!(naive_datetime, "Etc/UTC")
+  def format_time_ago(datetime) do
     now = DateTime.utc_now()
-    diff = DateTime.diff(now, datetime, :minute)
+    diff_seconds = DateTime.diff(now, datetime, :second)
 
     cond do
-      diff < 1 -> "Just now"
-      diff < 60 -> "#{diff} minutes ago"
-      diff < 1440 -> "#{div(diff, 60)} hours ago"
-      true -> "#{div(diff, 1440)} days ago"
-    end
-  end
+      diff_seconds < 60 ->
+        "#{diff_seconds} seconds ago"
 
-  defp report_type_display(type) do
-    case type do
-      "checkpoint" -> "CHECKPOINT"
-      "raid" -> "OPERATION"
-      "patrol" -> "PATROL"
-      "detention" -> "FACILITY"
-      _ -> "REPORT"
+      diff_seconds < 3600 ->
+        minutes = div(diff_seconds, 60)
+        "#{minutes} minute#{if minutes == 1, do: "", else: "s"} ago"
+
+      diff_seconds < 86400 ->
+        hours = div(diff_seconds, 3600)
+        "#{hours} hour#{if hours == 1, do: "", else: "s"} ago"
+
+      true ->
+        days = div(diff_seconds, 86400)
+        "#{days} day#{if days == 1, do: "", else: "s"} ago"
     end
   end
 end
