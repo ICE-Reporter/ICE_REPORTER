@@ -140,40 +140,152 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   # Helper functions for template
+  def format_time_ago(datetime) do\
+    now = DateTime.utc_now()\
+    # Convert NaiveDateTime to UTC DateTime if needed\
+    utc_datetime = case datetime do\
+      %DateTime{} -> datetime\
+      %NaiveDateTime{} -> DateTime.from_naive!(datetime, "Etc/UTC")\
+    end\
+\
+    diff_seconds = DateTime.diff(now, utc_datetime, :second)\
+\
+    cond do\
+      diff_seconds < 60 ->\
+        "#{diff_seconds} seconds ago"\
+\
+      diff_seconds < 3600 ->\
+        minutes = div(diff_seconds, 60)\
+        "#{minutes} minute#{if minutes == 1, do: "", else: "s"} ago"\
+\
+      diff_seconds < 86400 ->\
+        hours = div(diff_seconds, 3600)\
+        "#{hours} hour#{if hours == 1, do: "", else: "s"} ago"\
+\
+      true ->\
+        days = div(diff_seconds, 86400)\
+        "#{days} day#{if days == 1, do: "", else: "s"} ago"\
+    end\
+  end\
+
   def report_type_display("checkpoint"), do: "Checkpoint"
+  def format_time_ago(datetime) do\
+    now = DateTime.utc_now()\
+    # Convert NaiveDateTime to UTC DateTime if needed\
+    utc_datetime = case datetime do\
+      %DateTime{} -> datetime\
+      %NaiveDateTime{} -> DateTime.from_naive!(datetime, "Etc/UTC")\
+    end\
+\
+    diff_seconds = DateTime.diff(now, utc_datetime, :second)\
+\
+    cond do\
+      diff_seconds < 60 ->\
+        "#{diff_seconds} seconds ago"\
+\
+      diff_seconds < 3600 ->\
+        minutes = div(diff_seconds, 60)\
+        "#{minutes} minute#{if minutes == 1, do: "", else: "s"} ago"\
+\
+      diff_seconds < 86400 ->\
+        hours = div(diff_seconds, 3600)\
+        "#{hours} hour#{if hours == 1, do: "", else: "s"} ago"\
+\
+      true ->\
+        days = div(diff_seconds, 86400)\
+        "#{days} day#{if days == 1, do: "", else: "s"} ago"\
+    end\
+  end\
+
   def report_type_display("facility"), do: "Facility"
+  def format_time_ago(datetime) do\
+    now = DateTime.utc_now()\
+    # Convert NaiveDateTime to UTC DateTime if needed\
+    utc_datetime = case datetime do\
+      %DateTime{} -> datetime\
+      %NaiveDateTime{} -> DateTime.from_naive!(datetime, "Etc/UTC")\
+    end\
+\
+    diff_seconds = DateTime.diff(now, utc_datetime, :second)\
+\
+    cond do\
+      diff_seconds < 60 ->\
+        "#{diff_seconds} seconds ago"\
+\
+      diff_seconds < 3600 ->\
+        minutes = div(diff_seconds, 60)\
+        "#{minutes} minute#{if minutes == 1, do: "", else: "s"} ago"\
+\
+      diff_seconds < 86400 ->\
+        hours = div(diff_seconds, 3600)\
+        "#{hours} hour#{if hours == 1, do: "", else: "s"} ago"\
+\
+      true ->\
+        days = div(diff_seconds, 86400)\
+        "#{days} day#{if days == 1, do: "", else: "s"} ago"\
+    end\
+  end\
+
   def report_type_display("patrol"), do: "Patrol"
+  def format_time_ago(datetime) do\
+    now = DateTime.utc_now()\
+    # Convert NaiveDateTime to UTC DateTime if needed\
+    utc_datetime = case datetime do\
+      %DateTime{} -> datetime\
+      %NaiveDateTime{} -> DateTime.from_naive!(datetime, "Etc/UTC")\
+    end\
+\
+    diff_seconds = DateTime.diff(now, utc_datetime, :second)\
+\
+    cond do\
+      diff_seconds < 60 ->\
+        "#{diff_seconds} seconds ago"\
+\
+      diff_seconds < 3600 ->\
+        minutes = div(diff_seconds, 60)\
+        "#{minutes} minute#{if minutes == 1, do: "", else: "s"} ago"\
+\
+      diff_seconds < 86400 ->\
+        hours = div(diff_seconds, 3600)\
+        "#{hours} hour#{if hours == 1, do: "", else: "s"} ago"\
+\
+      true ->\
+        days = div(diff_seconds, 86400)\
+        "#{days} day#{if days == 1, do: "", else: "s"} ago"\
+    end\
+  end\
+
   def report_type_display("vehicle"), do: "Vehicle"
+  def format_time_ago(datetime) do\
+    now = DateTime.utc_now()\
+    # Convert NaiveDateTime to UTC DateTime if needed\
+    utc_datetime = case datetime do\
+      %DateTime{} -> datetime\
+      %NaiveDateTime{} -> DateTime.from_naive!(datetime, "Etc/UTC")\
+    end\
+\
+    diff_seconds = DateTime.diff(now, utc_datetime, :second)\
+\
+    cond do\
+      diff_seconds < 60 ->\
+        "#{diff_seconds} seconds ago"\
+\
+      diff_seconds < 3600 ->\
+        minutes = div(diff_seconds, 60)\
+        "#{minutes} minute#{if minutes == 1, do: "", else: "s"} ago"\
+\
+      diff_seconds < 86400 ->\
+        hours = div(diff_seconds, 3600)\
+        "#{hours} hour#{if hours == 1, do: "", else: "s"} ago"\
+\
+      true ->\
+        days = div(diff_seconds, 86400)\
+        "#{days} day#{if days == 1, do: "", else: "s"} ago"\
+    end\
+  end\
+
   def report_type_display(_), do: "Unknown"
 
-  def format_time_ago(datetime) do
-    now = DateTime.utc_now()
-    # Convert NaiveDateTime to UTC DateTime if needed
-    utc_datetime =
-      case datetime do
-        %DateTime{} -> datetime
-        %NaiveDateTime{} -> DateTime.from_naive!(datetime, "Etc/UTC")
-      end
-
-    diff_seconds = DateTime.diff(now, utc_datetime, :second)
-
-    cond do
-      diff_seconds < 60 ->
-        "#{diff_seconds} seconds ago"
-
-      diff_seconds < 3600 ->
-        minutes = div(diff_seconds, 60)
-        "#{minutes} minute#{if minutes == 1, do: "", else: "s"} ago"
-
-      diff_seconds < 86400 ->
-        hours = div(diff_seconds, 3600)
-        "#{hours} hour#{if hours == 1, do: "", else: "s"} ago"
-
-      true ->
-        days = div(diff_seconds, 86400)
-        "#{days} day#{if days == 1, do: "", else: "s"} ago"
-    end
-  end
 
   now = DateTime.utc_now()
   diff_seconds = DateTime.diff(now, datetime, :second)
