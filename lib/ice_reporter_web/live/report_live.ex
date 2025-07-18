@@ -326,7 +326,9 @@ defmodule IceReporterWeb.ReportLive do
     case Req.get(url,
            params: params,
            headers: [{"User-Agent", "IceReporter/1.0"}],
-           receive_timeout: 5000
+           receive_timeout: 15000,
+           retry: :transient,
+           max_retries: 2
          ) do
       {:ok, %{status: 200, body: result}} ->
         # Use the same formatting logic as the search dropdown
@@ -358,7 +360,9 @@ defmodule IceReporterWeb.ReportLive do
     case Req.get(url,
            params: params,
            headers: [{"User-Agent", "IceReporter/1.0"}],
-           receive_timeout: 5000
+           receive_timeout: 15000,
+           retry: :transient,
+           max_retries: 2
          ) do
       {:ok, %{status: 200, body: results}} when is_list(results) ->
         suggestions =

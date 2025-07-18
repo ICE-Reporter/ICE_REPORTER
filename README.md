@@ -40,6 +40,7 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 - **[Phoenix LiveView](https://hexdocs.pm/phoenix_live_view/)**: Real-time server-rendered HTML
 - **[Ecto](https://hexdocs.pm/ecto/)**: Database wrapper and query generator
 - **[SQLite](https://sqlite.org/)**: Embedded database for simplicity and portability
+- **[castore](https://hex.pm/packages/castore)**: SSL certificate store for HTTPS requests
 
 ### Frontend
 - **[TailwindCSS](https://tailwindcss.com/)**: Utility-first CSS framework
@@ -250,13 +251,16 @@ flyctl secrets set HCAPTCHA_SITE_KEY="your-site-key"
 flyctl secrets set HCAPTCHA_SECRET="your-secret-key"
 
 # Create persistent volume for database
-flyctl volumes create ice_reporter_data --size 1
+# Note: Replace 'ord' with your desired region (e.g., sea, iad, lax)
+# Region must match primary_region in fly.toml
+flyctl volumes create ice_reporter_data --region ord --size 1
 ```
 
 ### Production Checklist
 - [ ] Set strong `SECRET_KEY_BASE`
 - [ ] Configure production hCaptcha keys
 - [ ] Set up persistent volume for SQLite database
+- [ ] Ensure castore dependency for SSL certificates
 - [ ] Configure custom domain (optional)
 - [ ] Test rate limiting and captcha flow
 - [ ] Verify HTTPS enforcement
