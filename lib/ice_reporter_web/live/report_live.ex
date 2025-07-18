@@ -103,19 +103,19 @@ defmodule IceReporterWeb.ReportLive do
               case create_report_directly(socket, lat, lng, type, fp) do
                 {:noreply, updated_socket} ->
                   updated_socket
-                  |> put_flash(:info, "Verification successful! Your report has been submitted.")
+                  |> put_flash(:info, if(socket.assigns.current_language == "es", do: "¡Verificación exitosa! Su reporte ha sido enviado.", else: "Verification successful! Your report has been submitted."))
 
                 _ ->
                   socket
                   |> put_flash(
                     :error,
-                    "Verification successful but failed to submit report. Please try again."
+                    if(socket.assigns.current_language == "es", do: "Verificación exitosa pero falló al enviar el reporte. Por favor intente de nuevo.", else: "Verification successful but failed to submit report. Please try again.")
                   )
               end
 
             _ ->
               socket
-              |> put_flash(:info, "Verification successful! You can continue reporting.")
+              |> put_flash(:info, if(socket.assigns.current_language == "es", do: "¡Verificación exitosa! Puede continuar reportando.", else: "Verification successful! You can continue reporting."))
           end
 
         {:noreply,
@@ -127,7 +127,7 @@ defmodule IceReporterWeb.ReportLive do
       {:error, reason} ->
         {:noreply,
          socket
-         |> put_flash(:error, "Captcha verification failed. Please try again.")}
+         |> put_flash(:error, if(socket.assigns.current_language == "es", do: "Falló la verificación del captcha. Por favor intente de nuevo.", else: "Captcha verification failed. Please try again."))}
     end
   end
 

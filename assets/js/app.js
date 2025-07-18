@@ -79,6 +79,7 @@ const Hooks = {
 
     renderCaptcha(sitekey) {
       const container = this.el;
+      const language = container.dataset.language || 'en';
 
       // Clear any existing captcha
       container.innerHTML = "";
@@ -86,6 +87,7 @@ const Hooks = {
       // Render hCaptcha widget
       const widgetId = window.hcaptcha.render(container, {
         sitekey: sitekey,
+        hl: language, // Set language for hCaptcha
         callback: (token) => {
 
           // Send token to LiveView
@@ -99,6 +101,15 @@ const Hooks = {
         },
       });
 
+    },
+
+    updated() {
+      // Re-render captcha when language changes
+      const container = this.el;
+      const sitekey = container.dataset.sitekey;
+      if (sitekey) {
+        this.renderCaptcha(sitekey);
+      }
     },
 
     destroyed() {

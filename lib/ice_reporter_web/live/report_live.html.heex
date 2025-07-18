@@ -97,6 +97,7 @@
             phx-hook="HCaptcha"
             class="flex justify-center mb-4"
             data-sitekey={Application.get_env(:ice_reporter, :hcaptcha_site_key)}
+            data-language={@current_language}
           >
             <!-- hCaptcha widget renders here -->
           </div>
