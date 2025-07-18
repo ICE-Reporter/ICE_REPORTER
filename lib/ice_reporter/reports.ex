@@ -77,8 +77,8 @@ defmodule IceReporter.Reports do
 
       {:error, changeset} = error ->
         # Log the error for debugging
-        IO.puts("❌ Database error creating report:")
-        IO.inspect(changeset.errors)
+        require Logger
+        Logger.error("Database error creating report: #{inspect(changeset.errors)}")
         error
     end
   end

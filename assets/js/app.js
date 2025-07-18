@@ -40,7 +40,6 @@ let browserFingerprint = null; // Store browser fingerprint
 const Hooks = {
   MapContainer: {
     mounted() {
-      console.log("🗺️ Map hook mounted!");
       liveViewSocket = this; // Store reference to the LiveView
       initializeLeaflet();
     },
@@ -56,7 +55,6 @@ const Hooks = {
   },
   HCaptcha: {
     mounted() {
-      console.log("🔐 hCaptcha hook mounted!");
       const container = this.el;
       const sitekey = container.dataset.sitekey;
 
@@ -89,10 +87,6 @@ const Hooks = {
       const widgetId = window.hcaptcha.render(container, {
         sitekey: sitekey,
         callback: (token) => {
-          console.log(
-            "✅ hCaptcha solved! Token:",
-            token.substring(0, 20) + "...",
-          );
 
           // Send token to LiveView
           if (liveViewSocket) {
@@ -100,18 +94,14 @@ const Hooks = {
           }
         },
         "expired-callback": () => {
-          console.log("⏰ hCaptcha expired");
         },
         "error-callback": (error) => {
-          console.log("❌ hCaptcha error:", error);
         },
       });
 
-      console.log("🔐 hCaptcha widget rendered with ID:", widgetId);
     },
 
     destroyed() {
-      console.log("🔐 hCaptcha hook destroyed");
     },
   },
 };
@@ -130,12 +120,10 @@ window.addEventListener("phx:page-loading-stop", (_info) => topbar.hide());
 
 // Listen for LiveView events
 window.addEventListener("phx:load_existing_reports", (e) => {
-  console.log("📊 Loading existing reports:", e.detail.reports);
   loadExistingReports(e.detail.reports);
 });
 
 window.addEventListener("phx:add_report_marker", (e) => {
-  console.log("🧊 Adding new report marker:", e.detail);
   addReportMarker(
     e.detail.latitude,
     e.detail.longitude,
@@ -146,39 +134,32 @@ window.addEventListener("phx:add_report_marker", (e) => {
 });
 
 window.addEventListener("phx:remove_report_marker", (e) => {
-  console.log("❌ Removing report marker:", e.detail.id);
   removeReportMarker(e.detail.id);
 });
 
 window.addEventListener("phx:show_address_suggestions", (e) => {
-  console.log("🔍 Showing address suggestions:", e.detail.suggestions);
   showAddressSuggestions(e.detail.suggestions);
 });
 
 window.addEventListener("phx:hide_address_suggestions", (e) => {
-  console.log("🔍 Hiding address suggestions");
   hideAddressSuggestions();
 });
 
 window.addEventListener("phx:fly_to_address", (e) => {
-  console.log("✈️ Flying to address:", e.detail);
   flyToAddress(e.detail.lat, e.detail.lng, e.detail.address);
 });
 
 window.addEventListener("phx:remove_report_marker", (e) => {
-  console.log("🗑️ Removing expired report marker:", e.detail.id);
   removeReportMarker(e.detail.id);
 });
 
 window.addEventListener("phx:cleanup_completed", (e) => {
-  console.log("🧹 Cleanup completed:", e.detail.deleted_count, "reports removed");
   // Refresh the map markers to ensure they're in sync
   refreshMapMarkers();
 });
 
 // Generate browser fingerprint on page load
 browserFingerprint = generateBrowserFingerprint();
-console.log("🔍 Browser fingerprint generated:", browserFingerprint.substring(0, 16) + "...");
 
 // connect if there are any LiveViews on the page
 liveSocket.connect();
@@ -195,7 +176,6 @@ window.liveSocket = liveSocket;
 function initializeLeaflet() {
   const mapContainer = document.getElementById("map-container");
   if (!mapContainer) {
-    console.log("❌ Map container not found");
     return;
   }
 
@@ -206,7 +186,6 @@ function initializeLeaflet() {
     reportMarkers.clear();
   }
 
-  console.log("🗺️ Initializing Leaflet map...");
 
   // Create Leaflet map centered on USA
   leafletMap = L.map(mapContainer, {
@@ -231,11 +210,9 @@ function initializeLeaflet() {
 
   // Add click handler for placing reports
   leafletMap.on("click", function (e) {
-    console.log("🗺️ Map clicked at:", e.latlng);
     showReportPopup(e.latlng);
   });
 
-  console.log("✅ Leaflet map initialized successfully!");
 
   // Expose map globally
   window.leafletMap = leafletMap;
@@ -251,7 +228,6 @@ function initializeLeaflet() {
 }
 
 function loadExistingReportsFromDOM() {
-  console.log("📍 Loading existing reports from DOM...");
 
   // Find all report elements in the DOM
   const reportElements = document.querySelectorAll('#reports [id^="reports-"]');
@@ -263,7 +239,6 @@ function loadExistingReportsFromDOM() {
     const id = reportElement.id.replace("reports-", "");
 
     if (lat && lng && type) {
-      console.log(`📍 Adding existing report: ${type} at ${lat}, ${lng}`);
       
       // Remove any temporary marker that matches this location
       removeTemporaryMarker(lat, lng, type);
@@ -288,7 +263,6 @@ function setupReportObserver() {
           const id = node.id.replace("reports-", "");
 
           if (lat && lng && type) {
-            console.log(`📍 New report detected in DOM: ${type} at ${lat}, ${lng}`);
             
             // Remove any temporary marker that matches this location
             removeTemporaryMarker(lat, lng, type);
@@ -306,7 +280,6 @@ function setupReportObserver() {
     subtree: true
   });
 
-  console.log("👀 Report observer set up");
 }
 
 function setupAddressSearch() {
@@ -458,7 +431,6 @@ function hideSearchOverlay() {
 }
 
 function selectAddress(lat, lng, address) {
-  console.log(`📍 Address selected: ${address} at ${lat}, ${lng}`);
 
   // Update search input with the full formatted address
   const searchInput = document.getElementById("address-search");
@@ -484,7 +456,6 @@ function selectAddress(lat, lng, address) {
 function flyToAddress(lat, lng, address) {
   if (!leafletMap) return;
 
-  console.log(`✈️ Flying to: ${address} at ${lat}, ${lng}`);
 
   // Fly to the address with a nice animation
   leafletMap.flyTo([lat, lng], 16, {
@@ -578,7 +549,6 @@ function showReportPopup(latlng) {
 
 // Function to submit report via LiveView
 window.submitReport = function (lat, lng, type) {
-  console.log(`🧊 Submitting report: ${type} at ${lat}, ${lng}`);
 
   // Close the popup
   if (reportPopup) {
@@ -587,7 +557,6 @@ window.submitReport = function (lat, lng, type) {
 
   // Send event to LiveView using the stored socket reference
   if (liveViewSocket) {
-    console.log("✅ Sending map_report event to LiveView...");
     liveViewSocket.pushEvent("map_report", {
       latitude: parseFloat(lat),
       longitude: parseFloat(lng),
@@ -595,7 +564,6 @@ window.submitReport = function (lat, lng, type) {
       fingerprint: browserFingerprint
     });
   } else {
-    console.log("❌ LiveView socket not available");
   }
 
   // Add temporary marker immediately for instant feedback
@@ -732,7 +700,6 @@ function removeTemporaryMarker(lat, lng, type) {
       Math.abs(temp.lng - lng) < threshold && 
       temp.type === type
     ) {
-      console.log("🧹 Removing temporary marker for real report");
       leafletMap.removeLayer(temp.marker);
       temporaryMarkers.splice(i, 1);
       break; // Only remove the first match
@@ -804,7 +771,6 @@ function loadExistingReports(reports) {
 function refreshMapMarkers() {
   if (!leafletMap) return;
   
-  console.log("🔄 Refreshing map markers from DOM");
   
   // Clear all existing markers
   reportMarkers.forEach((marker, reportId) => {
@@ -852,7 +818,6 @@ function cleanupExpiredReports() {
   });
   
   if (expiredIds.length > 0) {
-    console.log(`🧹 Client-side cleanup: removed ${expiredIds.length} expired reports`);
   }
 }
 

@@ -36,16 +36,12 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_event("map_report", params, socket) do
-    IO.puts("🗺️ MAP REPORT EVENT RECEIVED!")
-    IO.inspect(params, label: "Map report params")
 
     lat = params["latitude"]
     lng = params["longitude"]
     type = params["type"]
     fingerprint = params["fingerprint"] || socket.assigns.client_ip  # Fallback to IP if no fingerprint
 
-    IO.puts("📍 Creating report with coords: #{lat}, #{lng}, type: #{type}")
-    IO.puts("🔍 Using identifier: #{String.slice(fingerprint, 0, 16)}...")
 
     # Check rate limit using fingerprint instead of IP
     case RateLimiter.check_rate_limit(fingerprint) do
@@ -69,7 +65,6 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_event("search_address", %{"value" => query}, socket) do
-    IO.puts("🔍 Address search: #{query}")
 
     if String.length(query) >= 3 do
       case search_addresses(query) do
@@ -85,11 +80,9 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_event("captcha_verified", %{"token" => token}, socket) do
-    IO.puts("🔐 Captcha verification started with token: #{String.slice(token, 0, 20)}...")
 
     case verify_hcaptcha_token(token) do
       {:ok, :verified} ->
-        IO.puts("✅ Captcha verification successful")
         
         # Reset rate limit for this client's fingerprint
         fingerprint = socket.assigns.current_fingerprint || socket.assigns.client_ip
@@ -102,7 +95,6 @@ defmodule IceReporterWeb.ReportLive do
          |> put_flash(:info, "Verification successful! You can continue reporting.")}
 
       {:error, reason} ->
-        IO.puts("❌ Captcha verification failed: #{reason}")
         
         {:noreply,
          socket
@@ -118,7 +110,6 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_event("select_address", %{"lat" => lat, "lng" => lng, "address" => address}, socket) do
-    IO.puts("🏠 Address selected: #{address} at #{lat}, #{lng}")
 
     {:noreply,
      socket
@@ -127,7 +118,6 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_event("fly_to_report", %{"lat" => lat, "lng" => lng, "address" => address}, socket) do
-    IO.puts("🎯 Flying to report location: #{address} at #{lat}, #{lng}")
 
     {:noreply,
      socket
@@ -165,7 +155,6 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_info({:new_report, report}, socket) do
-    IO.puts("📡 PubSub: New report received - #{report.id}")
 
     # For pagination, we need to refresh the current page to maintain accurate counts
     # New reports should appear on page 1, so if we're on page 1, refresh
@@ -178,7 +167,6 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_info({:report_updated, report}, socket) do
-    IO.puts("📡 PubSub: Report updated - #{report.id}")
 
     # Update the existing report in place (preserves position)
     {:noreply,
@@ -187,7 +175,6 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_info({:report_expired, report_id}, socket) do
-    IO.puts("📡 PubSub: Report expired - #{report_id}")
 
     # Remove expired report from stream and push map marker removal event
     # Then refresh pagination info to maintain accurate counts
@@ -199,7 +186,6 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_info({:cleanup_completed, %{deleted_count: count, timestamp: _timestamp}}, socket) do
-    IO.puts("📡 PubSub: Cleanup completed - #{count} reports removed")
 
     # Refresh the current page to maintain accurate pagination
     {:noreply,
@@ -252,7 +238,6 @@ defmodule IceReporterWeb.ReportLive do
         _ -> lng
       end
 
-    IO.puts("📍 Creating report: type=#{type}, lat=#{latitude}, lng=#{longitude}")
 
     # Basic geographic validation
     case validate_coordinates(latitude, longitude) do
@@ -261,7 +246,6 @@ defmodule IceReporterWeb.ReportLive do
         create_validated_report(socket, latitude, longitude, type, fingerprint)
         
       {:error, reason} ->
-        IO.puts("❌ Geographic validation failed: #{reason}")
         {:noreply,
          socket
          |> put_flash(:error, "Invalid location: #{reason}")}
@@ -278,7 +262,6 @@ defmodule IceReporterWeb.ReportLive do
            location_description: "Loading address..."
          }) do
       {:ok, report} ->
-        IO.puts("✅ Report created successfully: #{report.id}")
 
         # Increment rate limit counter using fingerprint
         identifier = fingerprint || socket.assigns.client_ip
@@ -293,7 +276,6 @@ defmodule IceReporterWeb.ReportLive do
         # Get address asynchronously to avoid blocking
         Task.start(fn ->
           address = get_address_from_coords(latitude, longitude)
-          IO.puts("🏠 Address resolved: #{address}")
 
           # Update the report with the real address
           Reports.update_report_address(report, address)
@@ -302,8 +284,6 @@ defmodule IceReporterWeb.ReportLive do
         {:noreply, updated_socket}
 
       {:error, changeset} ->
-        IO.puts("❌ Failed to create report:")
-        IO.inspect(changeset.errors)
 
         # Show error message to user
         {:noreply,
@@ -335,11 +315,9 @@ defmodule IceReporterWeb.ReportLive do
         format_address(result)
 
       {:ok, %{status: status, body: body}} ->
-        IO.puts("⚠️ Nominatim API returned status #{status}: #{inspect(body)}")
         "Location coordinates: #{lat}, #{lng}"
 
       {:error, reason} ->
-        IO.puts("❌ Nominatim API error: #{inspect(reason)}")
         "Location coordinates: #{lat}, #{lng}"
     end
   end
@@ -384,11 +362,9 @@ defmodule IceReporterWeb.ReportLive do
         {:ok, suggestions}
 
       {:ok, %{status: status, body: body}} ->
-        IO.puts("⚠️ Nominatim search API returned status #{status}: #{inspect(body)}")
         {:error, "Failed to search addresses"}
 
       {:error, reason} ->
-        IO.puts("❌ Nominatim search API error: #{inspect(reason)}")
         {:error, "Failed to search addresses"}
     end
   end

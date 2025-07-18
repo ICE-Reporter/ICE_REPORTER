@@ -129,7 +129,6 @@ defmodule IceReporter.RateLimiter do
   def handle_cast({:reset, ip_address}, state) do
     # Remove the IP from rate limiting (captcha verified)
     new_state = Map.delete(state, ip_address)
-    IO.puts("🔄 Rate limit reset for IP: #{ip_address}")
     {:noreply, new_state}
   end
 
