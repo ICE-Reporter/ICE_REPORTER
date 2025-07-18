@@ -4,9 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="ICE Reporter - Cool Community Alert System" suffix=" · Stay Cool">
+    <.live_title default="ICE Reporter">
       {assigns[:page_title]}
     </.live_title>
+    <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
+    <link rel="icon" href={~p"/favicon.ico"} sizes="32x32" />
+    <link rel="shortcut icon" href={~p"/favicon.ico"} />
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
     <!-- Leaflet CSS -->
     <link

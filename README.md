@@ -33,6 +33,11 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 - **Responsive design**: Works seamlessly on desktop and mobile devices
 - **Auto-expiration**: Reports automatically expire after 4 hours
 
+### 🌍 Language Support
+- **Bilingual interface**: Full English/Spanish language toggle
+- **Instant switching**: Language changes without page reload
+- **Comprehensive translations**: All UI elements, buttons, and messages translated
+
 ## Tech Stack
 
 ### Backend

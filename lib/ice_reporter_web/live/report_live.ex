@@ -27,6 +27,7 @@ defmodule IceReporterWeb.ReportLive do
      |> assign(:rate_limit_message, nil)
      |> assign(:show_captcha, false)
      |> assign(:pending_report, nil)
+     |> assign(:current_language, "en")
      |> assign(:current_page, page)
      |> assign(:per_page, per_page)
      |> assign(:total_pages, pagination_data.total_pages)
@@ -182,6 +183,24 @@ defmodule IceReporterWeb.ReportLive do
     end
   end
 
+  def handle_event("toggle_language", %{"language" => language}, socket) do
+    # Force a complete re-render by updating all assigns
+    page = socket.assigns.current_page
+    per_page = socket.assigns.per_page
+    pagination_data = Reports.list_active_reports_paginated(page, per_page)
+    
+    {:noreply,
+     socket
+     |> assign(:current_language, language)
+     |> assign(:reports_empty?, pagination_data.reports == [])
+     |> assign(:total_pages, pagination_data.total_pages)
+     |> assign(:total_count, pagination_data.total_count)
+     |> assign(:has_previous, pagination_data.has_previous)
+     |> assign(:has_next, pagination_data.has_next)
+     |> stream(:reports, pagination_data.reports, reset: true)
+     |> put_flash(:info, if(language == "es", do: "Idioma cambiado a Español", else: "Language changed to English"))}
+  end
+
   def handle_info({:new_report, report}, socket) do
     # For pagination, we need to refresh the current page to maintain accurate counts
     # New reports should appear on page 1, so if we're on page 1, refresh
@@ -279,10 +298,10 @@ defmodule IceReporterWeb.ReportLive do
     # Create the report first with basic info, then update with address async
     case Reports.create_report(%{
            type: type,
-           description: "Reported via map click",
+           description: if(socket.assigns.current_language == "es", do: "Reportado mediante clic en el mapa", else: "Reported via map click"),
            latitude: latitude,
            longitude: longitude,
-           location_description: "Loading address..."
+           location_description: if(socket.assigns.current_language == "es", do: "Cargando dirección...", else: "Loading address...")
          }) do
       {:ok, report} ->
         # Increment rate limit counter using fingerprint
@@ -651,4 +670,16 @@ defmodule IceReporterWeb.ReportLive do
   def report_type_display("patrol"), do: "Patrol"
   def report_type_display("detention"), do: "Facility"
   def report_type_display(_), do: "Unknown"
+  
+  def report_type_display_translated(type, "es") do
+    case type do
+      "checkpoint" -> "Punto de control"
+      "raid" -> "Operación"
+      "patrol" -> "Patrulla"
+      "detention" -> "Instalación"
+      _ -> type
+    end
+  end
+  
+  def report_type_display_translated(type, _), do: report_type_display(type)
 end
