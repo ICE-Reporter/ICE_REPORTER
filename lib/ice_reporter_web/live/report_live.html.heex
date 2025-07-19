@@ -74,7 +74,7 @@
     <%= if @rate_limit_message do %>
       <div class="max-w-4xl mx-auto px-6 py-2">
         <div class="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-orange-400 rounded-xl p-3 text-center">
-          <p class="text-orange-800 font-bold text-sm">{@rate_limit_message}</p>
+          <p class="text-orange-800 font-bold text-sm"><%= @rate_limit_message %></p>
         </div>
       </div>
     <% end %>

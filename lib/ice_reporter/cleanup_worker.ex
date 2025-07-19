@@ -15,7 +15,8 @@ defmodule IceReporter.CleanupWorker do
   end
 
   def init(_opts) do
-    IO.puts("🧹 CleanupWorker started - will clean up reports older than #{@expiration_hours} hours")
+    require Logger
+    Logger.info("CleanupWorker started - will clean up reports older than #{@expiration_hours} hours")
     schedule_cleanup()
     {:ok, %{}}
   end
@@ -39,7 +40,8 @@ defmodule IceReporter.CleanupWorker do
       |> Repo.all()
     
     if expired_reports != [] do
-      IO.puts("🧹 Found #{length(expired_reports)} expired reports to clean up")
+      require Logger
+      Logger.info("Found #{length(expired_reports)} expired reports to clean up")
       
       # Notify all clients to remove expired markers
       Enum.each(expired_reports, fn report_id ->
@@ -57,7 +59,7 @@ defmodule IceReporter.CleanupWorker do
         )
         |> Repo.delete_all()
       
-      IO.puts("🧹 Cleaned up #{deleted_count} expired reports from database")
+      Logger.info("Cleaned up #{deleted_count} expired reports from database")
       
       # Broadcast cleanup event to trigger client-side refresh
       Phoenix.PubSub.broadcast(
@@ -66,7 +68,8 @@ defmodule IceReporter.CleanupWorker do
         {:cleanup_completed, %{deleted_count: deleted_count, timestamp: now}}
       )
     else
-      IO.puts("🧹 No expired reports to clean up")
+      require Logger
+      Logger.debug("No expired reports to clean up")
     end
   end
 

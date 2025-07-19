@@ -23,10 +23,11 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 
 ### 🔒 Privacy & Security
 - **Completely anonymous**: No user accounts, login, or personal information required
-- **IP-based rate limiting**: 3 reports per 10 minutes to prevent abuse
-- **Browser fingerprinting**: Enhanced spam protection without tracking users
+- **Smart rate limiting**: 3 reports per 10 minutes with browser fingerprinting for enhanced spam protection
 - **hCaptcha integration**: Automated verification for sustained reporting
-- **Data minimization**: Only essential geographic and temporal data is stored
+- **Captcha failure cleanup**: Automatically removes all reports from users who fail verification
+- **Data minimization**: Only essential geographic and temporal data is stored in database
+- **Temporary tracking**: Browser fingerprints stored only in server memory, auto-expire after 30 minutes
 
 ### ⚡ Real-time Experience
 - **Live updates**: Phoenix LiveView provides instant report broadcasting
@@ -75,6 +76,7 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 ### Rate Limiting & Anti-Abuse
 - **3 reports per 10 minutes** per IP address/browser fingerprint
 - **hCaptcha verification** required for additional reports
+- **Captcha failure cleanup** automatically removes all reports from users who fail verification
 - **Geographic validation** prevents ocean/invalid coordinate reports
 - **Duplicate detection** blocks exact coordinate matches within 1 hour
 - **Continental US bounds** enforcement
@@ -102,8 +104,8 @@ ICE Reporter follows strict data minimization principles:
 ### What We Don't Store
 - ❌ **No user accounts** or personal information
 - ❌ **No IP addresses** in the database
-- ❌ **No browser fingerprints** in the database
-- ❌ **No session tracking** beyond rate limiting
+- ❌ **No browser fingerprints** in the database (only temporarily in memory)
+- ❌ **No session tracking** beyond anti-spam measures
 - ❌ **No analytics** or third-party tracking
 - ❌ **No email** or contact information
 
@@ -115,12 +117,20 @@ ICE Reporter follows strict data minimization principles:
 - **Geographic bounds** checking
 - **Automatic data expiration** (4 hours)
 
-### Rate Limiting Details
+### Rate Limiting & Anti-Spam Details
 The rate limiter uses an in-memory GenServer that:
-- Tracks submission counts per IP/fingerprint
-- Automatically cleans up expired entries every 5 minutes
+- Tracks submission counts per IP/fingerprint (expires after 10 minutes)
+- Temporarily tracks report IDs for captcha failure cleanup (expires after 30 minutes)
 - Resets after successful hCaptcha verification
+- Removes all reports from users who fail captcha verification
 - Does not persist rate limiting data to the database
+
+### Data Cleanup Schedule
+- **Memory cleanup**: Every 5 minutes (removes expired rate limits and tracking data)
+- **Database cleanup**: Every 30 minutes (removes reports older than 4 hours)
+- **Report expiration**: 4 hours (reports disappear from map)
+- **Rate limit reset**: 10 minutes (users can report again)
+- **Captcha tracking**: 30 minutes (cleanup tracking expires)
 
 ## Development Setup
 

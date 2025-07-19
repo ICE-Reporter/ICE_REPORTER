@@ -7,7 +7,9 @@ defmodule IceReporterWeb.Router do
     plug :fetch_live_flash
     plug :put_root_layout, html: {IceReporterWeb.Layouts, :root}
     plug :protect_from_forgery
-    plug :put_secure_browser_headers
+    plug :put_secure_browser_headers, %{
+      "content-security-policy" => "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://js.hcaptcha.com https://newassets.hcaptcha.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' https://nominatim.openstreetmap.org https://hcaptcha.com https://api.hcaptcha.com; frame-src https://hcaptcha.com https://newassets.hcaptcha.com;"
+    }
   end
 
   pipeline :api do

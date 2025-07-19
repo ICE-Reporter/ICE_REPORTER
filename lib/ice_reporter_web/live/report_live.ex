@@ -41,8 +41,13 @@ defmodule IceReporterWeb.ReportLive do
     lat = params["latitude"]
     lng = params["longitude"]
     type = params["type"]
-    # Fallback to IP if no fingerprint
+    # Fallback to IP if no fingerprint, but log when this happens for monitoring
     fingerprint = params["fingerprint"] || socket.assigns.client_ip
+    
+    if params["fingerprint"] == nil do
+      require Logger
+      Logger.warning("Report submitted without browser fingerprint, using fallback identifier")
+    end
 
     # Check rate limit using fingerprint instead of IP
     case RateLimiter.check_rate_limit(fingerprint) do
@@ -94,6 +99,9 @@ defmodule IceReporterWeb.ReportLive do
         # Reset rate limit for this client's fingerprint
         fingerprint = socket.assigns.current_fingerprint || socket.assigns.client_ip
         RateLimiter.reset_rate_limit(fingerprint)
+        
+        # Clear report tracking since captcha was successful
+        RateLimiter.clear_report_tracking(fingerprint)
 
         # Create the pending report if one exists
         socket =
@@ -124,19 +132,97 @@ defmodule IceReporterWeb.ReportLive do
          |> assign(:rate_limit_message, nil)
          |> assign(:pending_report, nil)}
 
-      {:error, reason} ->
+      {:error, _reason} ->
+        # Captcha failed - remove all reports from this fingerprint
+        fingerprint = socket.assigns.current_fingerprint || socket.assigns.client_ip
+        removed_report_ids = RateLimiter.cleanup_reports_for_fingerprint(fingerprint)
+        
+        # Remove reports from database and update UI
+        updated_socket = 
+          if removed_report_ids != [] do
+            # First, get the actual report structs BEFORE deleting them for proper stream deletion
+            reports_to_delete = from(r in IceReporter.Report, where: r.id in ^removed_report_ids) |> IceReporter.Repo.all()
+            
+            # Delete reports from database
+            from(r in IceReporter.Report, where: r.id in ^removed_report_ids)
+            |> IceReporter.Repo.delete_all()
+            
+            # Broadcast removal to all other clients
+            Enum.each(removed_report_ids, fn report_id ->
+              Phoenix.PubSub.broadcast(
+                IceReporter.PubSub,
+                "reports",
+                {:report_expired, report_id}
+              )
+            end)
+            
+            # Update this user's UI immediately (remove from stream and map)
+            Enum.reduce(reports_to_delete, socket, fn report, acc_socket ->
+              acc_socket
+              |> stream_delete(:reports, report)
+              |> push_event("remove_report_marker", %{id: report.id})
+            end)
+            |> refresh_pagination_info()
+          else
+            socket
+          end
+
         {:noreply,
-         socket
-         |> put_flash(:error, if(socket.assigns.current_language == "es", do: "Falló la verificación del captcha. Por favor intente de nuevo.", else: "Captcha verification failed. Please try again."))}
+         updated_socket
+         |> put_flash(:error, if(socket.assigns.current_language == "es", do: "Falló la verificación del captcha. Por favor intente de nuevo.", else: "Captcha verification failed. Please try again."))
+         # Clean up both real reports (by ID) and temporary markers (by fingerprint)
+         |> push_event("cleanup_temporary_markers", %{fingerprint: fingerprint})
+         |> push_event("cleanup_all_markers_for_fingerprint", %{fingerprint: fingerprint, report_ids: removed_report_ids})}
     end
   end
 
   def handle_event("cancel_captcha", _params, socket) do
+    # User canceled captcha - remove all reports from this fingerprint
+    fingerprint = socket.assigns.current_fingerprint || socket.assigns.client_ip
+    removed_report_ids = RateLimiter.cleanup_reports_for_fingerprint(fingerprint)
+    
+    
+    # Remove reports from database and update UI
+    updated_socket = 
+      if removed_report_ids != [] do
+        
+        # First, get the actual report structs BEFORE deleting them for proper stream deletion
+        reports_to_delete = from(r in IceReporter.Report, where: r.id in ^removed_report_ids) |> IceReporter.Repo.all()
+        
+        # Delete reports from database
+        from(r in IceReporter.Report, where: r.id in ^removed_report_ids)
+        |> IceReporter.Repo.delete_all()
+        
+        # Broadcast removal to all other clients
+        Enum.each(removed_report_ids, fn report_id ->
+          Phoenix.PubSub.broadcast(
+            IceReporter.PubSub,
+            "reports",
+            {:report_expired, report_id}
+          )
+        end)
+        
+        # Update this user's UI immediately (remove from stream and map)
+        Enum.reduce(reports_to_delete, socket, fn report, acc_socket ->
+          acc_socket
+          |> stream_delete(:reports, report)
+          |> push_event("remove_report_marker", %{id: report.id})
+        end)
+        |> refresh_pagination_info()
+      else
+        socket
+      end
+
     {:noreply,
-     socket
+     updated_socket
      |> assign(:show_captcha, false)
      |> assign(:rate_limit_message, nil)
-     |> assign(:pending_report, nil)}
+     |> assign(:pending_report, nil)
+     # Clean up both real reports (by ID) and temporary markers (by fingerprint)
+     |> push_event("cleanup_temporary_markers", %{fingerprint: fingerprint})
+     |> push_event("cleanup_all_markers_for_fingerprint", %{fingerprint: fingerprint, report_ids: removed_report_ids})
+     # Refresh browser to ensure clean state
+     |> push_event("refresh_browser", %{reason: "captcha_cancelled"})}
   end
 
   def handle_event("select_address", %{"lat" => lat, "lng" => lng, "address" => address}, socket) do
@@ -201,7 +287,7 @@ defmodule IceReporterWeb.ReportLive do
      |> put_flash(:info, if(language == "es", do: "Idioma cambiado a Español", else: "Language changed to English"))}
   end
 
-  def handle_info({:new_report, report}, socket) do
+  def handle_info({:new_report, _report}, socket) do
     # For pagination, we need to refresh the current page to maintain accurate counts
     # New reports should appear on page 1, so if we're on page 1, refresh
     if socket.assigns.current_page == 1 do
@@ -308,6 +394,9 @@ defmodule IceReporterWeb.ReportLive do
         identifier = fingerprint || socket.assigns.client_ip
         RateLimiter.increment_count(identifier)
 
+        # Track this report for potential cleanup on captcha failure
+        RateLimiter.track_report(identifier, report.id)
+
         # Immediately update the UI for the creator (since PubSub might be delayed)
         updated_socket =
           socket
@@ -324,7 +413,7 @@ defmodule IceReporterWeb.ReportLive do
 
         {:noreply, updated_socket}
 
-      {:error, changeset} ->
+      {:error, _changeset} ->
         # Show error message to user
         {:noreply,
          socket
@@ -354,10 +443,10 @@ defmodule IceReporterWeb.ReportLive do
         # Use the same formatting logic as the search dropdown
         format_address(result)
 
-      {:ok, %{status: status, body: body}} ->
+      {:ok, %{status: _status, body: _body}} ->
         "Location coordinates: #{lat}, #{lng}"
 
-      {:error, reason} ->
+      {:error, _reason} ->
         "Location coordinates: #{lat}, #{lng}"
     end
   end
@@ -403,10 +492,10 @@ defmodule IceReporterWeb.ReportLive do
 
         {:ok, suggestions}
 
-      {:ok, %{status: status, body: body}} ->
+      {:ok, %{status: _status, body: _body}} ->
         {:error, "Failed to search addresses"}
 
-      {:error, reason} ->
+      {:error, _reason} ->
         {:error, "Failed to search addresses"}
     end
   end

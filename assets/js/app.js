@@ -33,6 +33,8 @@ let leafletMap = null;
 let reportPopup = null;
 let reportMarkers = new Map(); // Track markers by report ID
 let temporaryMarkers = []; // Track temporary markers
+let temporaryMarkersByFingerprint = new Map(); // Track temporary markers by fingerprint
+let removedReportIds = new Set(); // Track report IDs that have been removed to prevent re-adding
 let liveViewSocket = null; // Store the LiveView socket reference
 let browserFingerprint = null; // Store browser fingerprint
 
@@ -49,6 +51,8 @@ const Hooks = {
         leafletMap = null;
         reportMarkers.clear();
         temporaryMarkers = []; // Clear temporary markers
+        temporaryMarkersByFingerprint.clear(); // Clear fingerprint tracking
+        removedReportIds.clear(); // Clear removed IDs tracking
       }
       liveViewSocket = null;
     },
@@ -57,6 +61,11 @@ const Hooks = {
     mounted() {
       const container = this.el;
       const sitekey = container.dataset.sitekey;
+
+      // Set up 30-second timeout for captcha
+      this.captchaTimeout = setTimeout(() => {
+        window.location.reload();
+      }, 30000);
 
       // Load hCaptcha script if not already loaded
       if (!window.hcaptcha) {
@@ -89,6 +98,11 @@ const Hooks = {
         sitekey: sitekey,
         hl: language, // Set language for hCaptcha
         callback: (token) => {
+          // Clear the timeout since captcha was completed
+          if (this.captchaTimeout) {
+            clearTimeout(this.captchaTimeout);
+            this.captchaTimeout = null;
+          }
 
           // Send token to LiveView
           if (liveViewSocket) {
@@ -113,6 +127,11 @@ const Hooks = {
     },
 
     destroyed() {
+      // Clear timeout if component is destroyed
+      if (this.captchaTimeout) {
+        clearTimeout(this.captchaTimeout);
+        this.captchaTimeout = null;
+      }
     },
   },
 };
@@ -160,13 +179,26 @@ window.addEventListener("phx:fly_to_address", (e) => {
   flyToAddress(e.detail.lat, e.detail.lng, e.detail.address);
 });
 
-window.addEventListener("phx:remove_report_marker", (e) => {
-  removeReportMarker(e.detail.id);
-});
-
 window.addEventListener("phx:cleanup_completed", (e) => {
   // Refresh the map markers to ensure they're in sync
   refreshMapMarkers();
+});
+
+window.addEventListener("phx:cleanup_temporary_markers", (e) => {
+  // Clean up temporary markers for a specific fingerprint
+  cleanupTemporaryMarkersByFingerprint(e.detail.fingerprint);
+});
+
+window.addEventListener("phx:cleanup_all_markers_for_fingerprint", (e) => {
+  // Comprehensive cleanup for both real reports and temporary markers
+  cleanupAllMarkersForFingerprint(e.detail.fingerprint, e.detail.report_ids);
+});
+
+window.addEventListener("phx:refresh_browser", (e) => {
+  // Refresh browser for clean state after captcha cancellation
+  setTimeout(() => {
+    window.location.reload();
+  }, 1000); // Small delay to allow cleanup events to complete
 });
 
 // Generate browser fingerprint on page load
@@ -578,7 +610,15 @@ window.submitReport = function (lat, lng, type) {
   }
 
   // Add temporary marker immediately for instant feedback
-  addReportMarker(lat, lng, type, true);
+  const tempMarker = addReportMarker(lat, lng, type, true);
+  
+  // Track this temporary marker by fingerprint so we can remove it if captcha is cancelled
+  if (tempMarker && browserFingerprint) {
+    if (!temporaryMarkersByFingerprint.has(browserFingerprint)) {
+      temporaryMarkersByFingerprint.set(browserFingerprint, []);
+    }
+    temporaryMarkersByFingerprint.get(browserFingerprint).push(tempMarker);
+  }
 };
 
 // Make selectAddress globally available
@@ -641,6 +681,11 @@ function hashString(str) {
 // Function to add report markers with emojis
 function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
   if (!leafletMap) return;
+  
+  // Check if this report ID has been removed - don't re-add it
+  if (reportId && removedReportIds.has(String(reportId))) {
+    return null;
+  }
 
   const emoji = getEmojiForType(type);
   const markerColor = isTemporary ? "#fbbf24" : getColorForType(type);
@@ -677,14 +722,44 @@ function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
 
   // Store marker if it has a report ID
   if (reportId) {
-    reportMarkers.set(reportId, marker);
+    // Check if there's already a temporary marker at this location that we should convert
+    const matchingTempIndex = temporaryMarkers.findIndex(temp => 
+      Math.abs(temp.lat - lat) < 0.0001 && 
+      Math.abs(temp.lng - lng) < 0.0001 && 
+      temp.type === type
+    );
+    
+    if (matchingTempIndex !== -1) {
+      // Convert existing temporary marker to permanent
+      const tempMarker = temporaryMarkers[matchingTempIndex];
+      
+      // Update the popup to show "Reported" instead of "Submitting..."
+      tempMarker.marker.setPopupContent(`
+        <div class="text-center">
+          <strong>${emoji} ${getTypeDisplayName(type)}</strong><br>
+          <small class="text-gray-600">Reported</small>
+        </div>
+      `);
+      
+      // Store the existing marker with the report ID
+      reportMarkers.set(reportId, tempMarker.marker);
+      
+      // Remove from temporary tracking
+      temporaryMarkers.splice(matchingTempIndex, 1);
+      
+      return tempMarker.marker;
+    } else {
+      // No matching temporary marker, store this new marker
+      reportMarkers.set(reportId, marker);
+    }
   } else if (isTemporary) {
     // Track temporary markers so we can remove them later
     temporaryMarkers.push({
       marker: marker,
       lat: lat,
       lng: lng,
-      type: type
+      type: type,
+      reportId: reportId // Store reportId even for temporary markers
     });
   }
 
@@ -693,10 +768,35 @@ function addReportMarker(lat, lng, type, isTemporary = false, reportId = null) {
 
 // Function to remove report marker
 function removeReportMarker(reportId) {
+  if (!leafletMap) return;
+  
+  // Add to removed IDs list to prevent re-adding
+  removedReportIds.add(String(reportId));
+  
+  // Remove from tracked markers
   if (reportMarkers.has(reportId)) {
     const marker = reportMarkers.get(reportId);
     leafletMap.removeLayer(marker);
     reportMarkers.delete(reportId);
+  }
+  
+  // Also check for any temporary markers that might have this ID
+  // (in case a temporary marker was created but not properly replaced)
+  const initialTempCount = temporaryMarkers.length;
+  temporaryMarkers = temporaryMarkers.filter(temp => {
+    if (temp.reportId === reportId) {
+      leafletMap.removeLayer(temp.marker);
+      console.log(`Removed temporary marker for report ID: ${reportId}`);
+      return false; // Remove from array
+    }
+    return true; // Keep in array
+  });
+  
+  // Force refresh of map markers to ensure consistency
+  if (initialTempCount > temporaryMarkers.length || reportMarkers.has(reportId)) {
+    setTimeout(() => {
+      refreshMapMarkers();
+    }, 100);
   }
 }
 
@@ -716,6 +816,97 @@ function removeTemporaryMarker(lat, lng, type) {
       break; // Only remove the first match
     }
   }
+}
+
+// Function to clean up all temporary markers for a specific fingerprint
+function cleanupTemporaryMarkersByFingerprint(fingerprint) {
+  if (!leafletMap) return;
+  
+  
+  const markersToCleanup = temporaryMarkersByFingerprint.get(fingerprint);
+  if (markersToCleanup) {
+    markersToCleanup.forEach(marker => {
+      if (leafletMap.hasLayer(marker)) {
+        leafletMap.removeLayer(marker);
+      }
+    });
+    
+    // Remove from tracking
+    temporaryMarkersByFingerprint.delete(fingerprint);
+    
+    // Also clean up from the general temporaryMarkers array
+    temporaryMarkers = temporaryMarkers.filter(temp => {
+      if (markersToCleanup.includes(temp.marker)) {
+        console.log(`Removed temporary marker from general tracking`);
+        return false;
+      }
+      return true;
+    });
+  }
+}
+
+// Function to clean up ALL markers (both real and temporary) for a specific fingerprint
+function cleanupAllMarkersForFingerprint(fingerprint, reportIds) {
+  if (!leafletMap) return;
+  
+  
+  // First, clean up any temporary markers for this specific fingerprint
+  cleanupTemporaryMarkersByFingerprint(fingerprint);
+  
+  // Then clean up real report markers by their specific IDs
+  if (reportIds && reportIds.length > 0) {
+    reportIds.forEach(reportId => {
+      const stringId = String(reportId);
+      const intId = parseInt(reportId);
+      
+      // Add to removed IDs list to prevent re-adding
+      removedReportIds.add(stringId);
+      
+      // Remove from our tracking - try all possible ID formats
+      [reportId, stringId, intId].forEach(id => {
+        if (reportMarkers.has(id)) {
+          const marker = reportMarkers.get(id);
+          if (leafletMap.hasLayer(marker)) {
+            leafletMap.removeLayer(marker);
+          }
+          reportMarkers.delete(id);
+        }
+      });
+      
+      // Also remove the DOM element to prevent it from being reloaded
+      const domElement = document.getElementById(`reports-${stringId}`);
+      if (domElement) {
+        domElement.remove();
+        console.log(`REMOVED DOM element for user's report ID: ${stringId}`);
+      }
+    });
+  }
+  
+  // Additional safety: scan for any markers that might match the report IDs but weren't properly tracked
+  const reportIdSet = new Set(reportIds ? reportIds.map(id => String(id)) : []);
+  
+  leafletMap.eachLayer(layer => {
+    if (layer instanceof L.Marker && layer.options.icon && layer.options.icon.options.className === "custom-emoji-marker") {
+      // Check if this marker might correspond to one of the report IDs we're cleaning up
+      // This is safe because we only remove markers for the specific report IDs from this user
+      let markerReportId = null;
+      
+      // Try to find the report ID associated with this marker
+      for (const [id, trackedMarker] of reportMarkers.entries()) {
+        if (trackedMarker === layer) {
+          markerReportId = String(id);
+          break;
+        }
+      }
+      
+      // Only remove if this marker matches one of the report IDs we're supposed to clean up
+      if (markerReportId && reportIdSet.has(markerReportId)) {
+        leafletMap.removeLayer(layer);
+        console.log(`SAFETY CLEANUP: Removed orphaned marker for user's report ID: ${markerReportId}`);
+      }
+    }
+  });
+  
 }
 
 function getEmojiForType(type) {
@@ -852,7 +1043,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Handle mobile keyboard visibility
   const addressInput = document.getElementById('address-search');
-  if (addressInput && isMobileDevice()) {
+  if (addressInput && /Mobi|Android/i.test(navigator.userAgent)) {
     addressInput.addEventListener('focus', function() {
       // On mobile, scroll to input when keyboard appears
       setTimeout(() => {
