@@ -17,9 +17,6 @@ defmodule IceReporter.Application do
       {Task.Supervisor, name: IceReporter.TaskSupervisor},
       IceReporter.RateLimiter,
       IceReporter.CleanupWorker,
-      # Start a worker by calling: IceReporter.Worker.start_link(arg)
-      # {IceReporter.Worker, arg},
-      # Start to serve requests, typically the last entry
       IceReporterWeb.Endpoint
     ]
 

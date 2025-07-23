@@ -10,7 +10,7 @@ defmodule IceReporterWeb.Router do
 
     plug :put_secure_browser_headers, %{
       "content-security-policy" =>
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://js.hcaptcha.com https://newassets.hcaptcha.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' https://nominatim.openstreetmap.org https://hcaptcha.com https://api.hcaptcha.com; frame-src https://hcaptcha.com https://newassets.hcaptcha.com;"
+        "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://js.hcaptcha.com https://newassets.hcaptcha.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' wss://localhost:4000 https://nominatim.openstreetmap.org https://hcaptcha.com https://api.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com;"
     }
   end
 

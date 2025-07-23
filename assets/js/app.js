@@ -558,23 +558,23 @@ function showReportPopup(latlng) {
     }
 
     const popupContent = `
-    <div class="text-center p-2" style="z-index: 9999;">
-      <h3 class="text-lg font-black text-blue-600 mb-3">🧊 Report Activity</h3>
-      <div class="grid grid-cols-2 gap-2">
+    <div class="text-center p-2 sm:p-3" style="z-index: 9999;">
+      <h3 class="text-base sm:text-lg font-black text-blue-600 mb-2 sm:mb-3">🧊 Report Activity</h3>
+      <div class="grid grid-cols-1 gap-1.5 sm:gap-2 w-[160px] sm:w-[200px]">
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'checkpoint')" 
-                class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-3 py-2 rounded-xl font-bold hover:scale-105 transition-transform">
+                class="bg-white border-2 border-red-500 text-red-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-bold hover:bg-red-50 hover:scale-105 transition-all text-xs sm:text-sm">
           🛑 Checkpoint
         </button>
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'raid')" 
-                class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-3 py-2 rounded-xl font-bold hover:scale-105 transition-transform">
+                class="bg-white border-2 border-orange-500 text-orange-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-bold hover:bg-orange-50 hover:scale-105 transition-all text-xs sm:text-sm">
           🏠 Operation
         </button>
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'patrol')" 
-                class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-3 py-2 rounded-xl font-bold hover:scale-105 transition-transform">
+                class="bg-white border-2 border-blue-500 text-blue-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-bold hover:bg-blue-50 hover:scale-105 transition-all text-xs sm:text-sm">
           👮 Patrol
         </button>
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'detention')" 
-                class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-3 py-2 rounded-xl font-bold hover:scale-105 transition-transform">
+                class="bg-white border-2 border-purple-500 text-purple-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-bold hover:bg-purple-50 hover:scale-105 transition-all text-xs sm:text-sm">
           🧊 Facility
         </button>
       </div>

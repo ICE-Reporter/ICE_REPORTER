@@ -17,5 +17,10 @@ config :swoosh, local: false
 # Do not print debug messages in production
 config :logger, level: :info
 
+# Disable LiveView debug features in production
+config :phoenix_live_view,
+  debug_heex_annotations: false,
+  enable_expensive_runtime_checks: false
+
 # Runtime production configuration, including reading
 # of environment variables, is done on config/runtime.exs.

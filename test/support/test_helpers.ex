@@ -144,9 +144,6 @@ defmodule IceReporter.TestHelpers do
   Simulates time passage for rate limiter tests.
   """
   def simulate_time_passage(minutes) do
-    # This would be used with time mocking libraries like Freezegun
-    # For now, it's a placeholder
-    # For testing purposes only
     :timer.sleep(minutes * 1000)
   end
 

@@ -54,14 +54,25 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 
 ### Backend
 - **[Phoenix Framework](https://phoenixframework.org/)**: Modern web framework for Elixir
-- **[Phoenix LiveView](https://hexdocs.pm/phoenix_live_view/)**: Real-time server-rendered HTML
+- **[Phoenix LiveView 1.0.9](https://hexdocs.pm/phoenix_live_view/)**: Real-time server-rendered HTML
 - **[Ecto](https://hexdocs.pm/ecto/)**: Database wrapper and query generator
 - **[SQLite](https://sqlite.org/)**: Embedded database for simplicity and portability
+- **[Bandit](https://hex.pm/packages/bandit)**: Modern HTTP server for Phoenix
+- **[Req](https://hex.pm/packages/req)**: HTTP client for external API requests
 - **[castore](https://hex.pm/packages/castore)**: SSL certificate store for HTTPS requests
 
+### Code Quality & Testing
+- **[Credo](https://hex.pm/packages/credo)**: Static code analysis for code consistency and style
+- **[Dialyzer](https://www.erlang.org/doc/man/dialyzer.html)**: Static type analysis and bug detection
+- **[Bypass](https://hex.pm/packages/bypass)**: HTTP request mocking for tests
+- **[Floki](https://hex.pm/packages/floki)**: HTML parsing and testing utilities
+- **Custom quality checks**: Integrated `mix quality` command for comprehensive code validation
+
 ### Frontend
-- **[TailwindCSS](https://tailwindcss.com/)**: Utility-first CSS framework
-- **[Leaflet.js](https://leafletjs.com/)**: Interactive map library
+- **[TailwindCSS](https://tailwindcss.com/)**: Utility-first CSS framework  
+- **[daisyUI](https://daisyui.com/)**: Tailwind CSS component library with custom theme
+- **[Heroicons](https://heroicons.com/)**: Beautiful hand-crafted SVG icons from Tailwind Labs
+- **[Leaflet.js v1.9.4](https://leafletjs.com/)**: Interactive map library
 - **[OpenStreetMap](https://www.openstreetmap.org/)**: Free map tiles and geocoding
 
 ### Services
@@ -176,11 +187,28 @@ mix ecto.setup
 # Run tests
 mix test
 
+# Run code quality checks (format, credo, dialyzer)
+mix quality
+
 # Build assets
 mix assets.build
 
 # Interactive console
 iex -S mix phx.server
+```
+
+### Code Quality Workflow
+```bash
+# Run all quality checks
+mix quality
+
+# Run individual tools
+mix format          # Format code
+mix credo --strict   # Static analysis
+mix dialyzer        # Type checking
+
+# CI-friendly quality check
+mix quality.ci      # Includes format check and tests
 ```
 
 ### Environment Variables
@@ -231,15 +259,21 @@ ice_reporter/
 ├── lib/
 │   ├── ice_reporter/
 │   │   ├── application.ex           # OTP application
+│   │   ├── cleanup_worker.ex        # Automatic cleanup GenServer
+│   │   ├── rate_limiter.ex          # Rate limiting GenServer
 │   │   ├── repo.ex                  # Database repository
-│   │   ├── report.ex                # Report schema
+│   │   ├── report.ex                # Report schema with type definitions
 │   │   ├── reports.ex               # Report context
-│   │   └── rate_limiter.ex          # Rate limiting GenServer
+│   │   └── services/                # Business logic services
+│   │       ├── address_service.ex   # Address resolution & geocoding
+│   │       └── report_service.ex    # Report creation & validation
 │   └── ice_reporter_web/
 │       ├── controllers/             # HTTP controllers
 │       ├── live/
 │       │   ├── report_live.ex       # Main LiveView
-│       │   └── report_live.html.heex # Template
+│       │   ├── report_live.html.heex # Template
+│       │   └── report_live/
+│       │       └── helpers.ex       # LiveView helper functions
 │       ├── components/              # UI components
 │       ├── router.ex                # URL routing
 │       └── endpoint.ex              # Web endpoint
@@ -247,7 +281,7 @@ ice_reporter/
 │   ├── css/
 │   │   └── app.css                  # Tailwind styles
 │   └── js/
-│       └── app.js                   # Frontend JavaScript
+│       └── app.js                   # Frontend JavaScript & map integration
 ├── config/
 │   ├── config.exs                   # Base configuration
 │   ├── dev.exs                      # Development config
@@ -256,10 +290,22 @@ ice_reporter/
 ├── priv/
 │   ├── repo/migrations/             # Database migrations
 │   └── static/                      # Static assets
-├── test/                            # Test files
-├── fly.toml                         # Fly.io deployment config
-├── Dockerfile                       # Container configuration
-└── mix.exs                          # Project dependencies
+├── test/
+│   ├── ice_reporter/                # Context tests
+│   │   ├── rate_limiter_test.exs   # Rate limiter tests
+│   │   ├── reports_test.exs        # Reports context tests
+│   │   └── services/               # Service layer tests
+│   ├── ice_reporter_web/           # Web layer tests
+│   │   ├── controllers/            # Controller tests
+│   │   └── live/                   # LiveView integration tests
+│   └── support/                    # Test utilities
+│       ├── conn_case.ex            # HTTP test setup
+│       ├── data_case.ex            # Database test setup
+│       └── test_helpers.ex         # Test helper functions
+├── .credo.exs                      # Credo configuration
+├── fly.toml                        # Fly.io deployment config
+├── Dockerfile                      # Container configuration
+└── mix.exs                         # Project dependencies & quality aliases
 ```
 
 ## Deployment
@@ -290,6 +336,7 @@ flyctl volumes create ice_reporter_data --region ord --size 1
 - [ ] Configure custom domain (optional)
 - [ ] Test rate limiting and captcha flow
 - [ ] Configure HTTPS at deployment platform level (Fly.io handles this automatically)
+- [ ] Run `mix quality` to ensure code quality standards
 - [ ] Monitor application logs
 
 ## License
