@@ -1,0 +1,35 @@
+# fly.toml app configuration file generated for ice-reporter on 2024-01-01
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = "ice-reporter"
+primary_region = "ord"
+
+[build]
+  [build.args]
+    MIX_ENV = "prod"
+    NODE_ENV = "production"
+
+[env]
+  DATABASE_PATH = "/data/ice_reporter.db"
+  PHX_HOST = "ice-reporter.fly.dev"
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+[mounts]
+  source = "ice_reporter_data"
+  destination = "/data"
+
+[[statics]]
+  guest_path = "/app/priv/static"
+  url_prefix = "/static"
+
+[deploy]
+  strategy = "rolling"
+  release_command = "/app/bin/ice_reporter eval \"IceReporter.Release.migrate\""

@@ -1,0 +1,418 @@
+<Layouts.app flash={@flash}>
+  <div class="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-red-500 relative overflow-hidden">
+    <!-- Animated background elements -->
+    <div class="absolute inset-0 opacity-20">
+      <div class="absolute top-10 left-10 w-32 h-32 bg-white rounded-full animate-pulse"></div>
+      <div class="absolute top-32 right-20 w-20 h-20 bg-blue-200 rounded-full animate-bounce">
+      </div>
+      <div class="absolute bottom-20 left-32 w-24 h-24 bg-red-200 rounded-full animate-pulse">
+      </div>
+    </div>
+    
+<!-- Prototype Testing Banner -->
+    <div class="bg-gradient-to-r from-yellow-400 to-orange-500 text-black px-3 py-2 sm:px-4 sm:py-3 text-center font-bold text-xs sm:text-sm border-b-2 border-orange-600 relative z-50">
+      <div class="flex items-center justify-center gap-2 flex-wrap">
+        <span class="text-lg sm:text-xl">⚠️</span>
+        <span class="uppercase tracking-wide">
+          <span class="font-black">
+            {if @current_language == "es", do: "PROTOTIPO", else: "PROTOTYPE"}
+          </span>
+          - {if @current_language == "es",
+            do: "Este sitio está siendo probado y desarrollado",
+            else: "This site is currently being tested and developed"}
+        </span>
+        <span class="text-lg sm:text-xl">⚠️</span>
+      </div>
+      <div class="text-xs sm:text-sm mt-1 opacity-90">
+        {if @current_language == "es",
+          do:
+            "Los datos pueden restablecerse • Las características pueden cambiar • Solo para pruebas",
+          else: "Data may be reset • Features may change • Use for testing purposes only"}
+      </div>
+    </div>
+    
+<!-- ICEE Header -->
+    <div class="bg-gradient-to-r from-blue-500 to-red-500 px-3 py-3 sm:px-4 sm:py-4 text-center shadow-xl border-b-2 sm:border-b-4 border-white relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse">
+      </div>
+      <div class="relative z-10">
+        <div class="text-4xl sm:text-5xl lg:text-6xl mb-1 sm:mb-2 animate-bounce">🐻‍❄️</div>
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black text-white uppercase tracking-wider drop-shadow-lg">
+          {if @current_language == "es", do: "Reportero ICE", else: "ICE Reporter"}
+        </h1>
+        <p class="text-sm sm:text-base lg:text-lg text-white/95 font-bold mt-1">
+          {if @current_language == "es",
+            do: "Sistema de Alerta Comunitaria",
+            else: "Community Alert System"}
+        </p>
+      </div>
+    </div>
+    
+<!-- Language Toggle -->
+    <div class="bg-gradient-to-r from-blue-400 to-red-400 px-3 py-2 text-center border-b-2 border-white/20 relative z-10">
+      <div class="flex items-center justify-center gap-4">
+        <span class="text-white text-sm font-bold">🌍</span>
+        <button
+          phx-click="toggle_language"
+          phx-value-language="en"
+          class={[
+            "px-3 py-1 rounded-full text-xs font-bold transition-colors duration-200 cursor-pointer",
+            if(@current_language == "en",
+              do: "bg-white text-blue-600",
+              else: "bg-white/20 text-white hover:bg-white/30"
+            )
+          ]}
+        >
+          English
+        </button>
+        <button
+          phx-click="toggle_language"
+          phx-value-language="es"
+          class={[
+            "px-3 py-1 rounded-full text-xs font-bold transition-colors duration-200 cursor-pointer",
+            if(@current_language == "es",
+              do: "bg-white text-blue-600",
+              else: "bg-white/20 text-white hover:bg-white/30"
+            )
+          ]}
+        >
+          Español
+        </button>
+      </div>
+    </div>
+    
+<!-- Chill Safety Banner -->
+    <div class="bg-gradient-to-r from-white to-blue-100 text-blue-600 px-3 py-2 sm:px-4 sm:py-3 text-center font-black text-xs sm:text-sm border-b-2 border-red-400">
+      <span class="inline">
+        🧊 {if @current_language == "es",
+          do: "ANÓNIMO - SEGURIDAD COMUNITARIA PRIMERO",
+          else: "ANONYMOUS - COMMUNITY SAFETY FIRST"} ❄️
+      </span>
+    </div>
+    
+<!-- Rate Limit Message -->
+    <%= if @rate_limit_message do %>
+      <div class="max-w-4xl mx-auto px-6 py-2">
+        <div class="bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-orange-400 rounded-xl p-3 text-center">
+          <p class="text-orange-800 font-bold text-sm">{@rate_limit_message}</p>
+        </div>
+      </div>
+    <% end %>
+    
+<!-- hCaptcha Modal Overlay -->
+    <%= if @show_captcha do %>
+      <div class="fixed inset-0 bg-black/50 z-[99999] flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl border-4 border-blue-500 shadow-2xl max-w-md w-full p-6 relative">
+          <div class="text-center mb-6">
+            <div class="text-4xl mb-2">🔐</div>
+            <h3 class="text-2xl font-black text-blue-600 uppercase">
+              {if @current_language == "es",
+                do: "Verificación de seguridad",
+                else: "Security Check"}
+            </h3>
+            <p class="text-blue-500 font-bold mt-2">
+              {if @current_language == "es",
+                do: "Por favor verifica que eres humano para continuar reportando",
+                else: "Please verify you're human to continue reporting"}
+            </p>
+          </div>
+          
+<!-- hCaptcha widget will be inserted here -->
+          <div
+            id="hcaptcha-container"
+            phx-hook="HCaptcha"
+            class="flex justify-center mb-4"
+            data-sitekey={Application.get_env(:ice_reporter, :hcaptcha_site_key)}
+            data-language={@current_language}
+          >
+            <!-- hCaptcha widget renders here -->
+          </div>
+
+          <div class="text-center">
+            <button
+              phx-click="cancel_captcha"
+              class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+            >
+              {if @current_language == "es", do: "Cancelar", else: "Cancel"}
+            </button>
+          </div>
+        </div>
+      </div>
+    <% end %>
+    
+<!-- Address Search Bar -->
+    <div class="max-w-2xl mx-auto px-3 sm:px-4 lg:px-6 py-3 sm:py-4 relative z-[9999]">
+      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-lg sm:rounded-xl lg:rounded-2xl border-2 sm:border-3 border-white shadow-xl backdrop-blur-md p-3 sm:p-4">
+        <div class="relative">
+          <input
+            type="text"
+            id="address-search"
+            placeholder={"🔍 #{if @current_language == "es", do: "Buscar dirección...", else: "Search address..."}"}
+            class="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-blue-50 to-red-50 text-blue-700 placeholder:text-blue-400 border-2 sm:border-3 border-blue-200 focus:border-red-400 focus:ring-4 focus:ring-blue-200 rounded-lg sm:rounded-xl font-bold text-base sm:text-lg shadow-inner"
+            phx-keyup="search_address"
+            phx-debounce="300"
+          />
+          <!-- Autocomplete dropdown -->
+          <div id="address-suggestions" class="absolute top-full left-0 right-0 z-[99999] hidden">
+            <div class="bg-white border-2 sm:border-3 border-blue-200 rounded-lg sm:rounded-xl mt-2 shadow-2xl max-h-60 overflow-y-auto">
+              <!-- Suggestions will be populated here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+<!-- Search Overlay Dimmer -->
+    <div
+      id="search-overlay"
+      class="fixed inset-0 bg-black/30 backdrop-blur-sm z-[9998] hidden transition-all duration-300"
+    >
+    </div>
+
+    <div class="grid grid-cols-1 gap-3 sm:gap-4 lg:gap-6 p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto relative z-10">
+      <!-- Map Section -->
+      <div class="bg-gradient-to-br from-white/90 to-blue-50/90 rounded-xl sm:rounded-2xl lg:rounded-3xl border-2 sm:border-3 lg:border-4 border-white shadow-2xl backdrop-blur-md">
+        <div class="p-3 sm:p-4 border-b-2 border-blue-200/50">
+          <h2 class="text-lg sm:text-xl lg:text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2 flex-wrap">
+            <span class="flex items-center gap-1 flex-wrap">
+              <span class="hidden sm:inline">🗺️</span>
+              <span class="text-sm sm:text-base lg:text-lg">
+                {if @current_language == "es", do: "Mapa ICE", else: "ICE Map"} -
+                <span class="hidden sm:inline">
+                  {if @current_language == "es", do: "Haz clic para", else: "Click to"}
+                </span>
+                {if @current_language == "es",
+                  do: "Reportar actividad",
+                  else: "Report Activity"}
+              </span>
+            </span>
+            <span class="text-xs sm:text-sm bg-blue-500 text-white px-2 py-1 rounded-full">
+              {if @current_language == "es", do: "EN VIVO", else: "LIVE"}
+            </span>
+          </h2>
+          <!-- Explanatory text for all screen sizes -->
+          <div class="mt-2">
+            <p class="text-xs sm:text-sm text-blue-500 font-medium leading-tight">
+              {if @current_language == "es",
+                do:
+                  "Los reportes expiran automáticamente y se eliminan después de 4 horas. La limpieza de base de datos se ejecuta cada 30 minutos.",
+                else:
+                  "Reports auto-expire and are removed after 4 hours. Database cleanup runs every 30 minutes."}
+            </p>
+          </div>
+        </div>
+        <div
+          id="map-container"
+          phx-hook="MapContainer"
+          phx-update="ignore"
+          class="h-64 sm:h-80 lg:h-96 xl:h-[500px] relative bg-gradient-to-br from-blue-100 to-red-100 rounded-b-xl sm:rounded-b-2xl lg:rounded-b-3xl"
+        >
+          <!-- Leaflet will render here -->
+        </div>
+      </div>
+    </div>
+    
+<!-- Recent Reports -->
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 pb-6 sm:pb-8 relative z-10">
+      <div class="bg-gradient-to-br from-white/95 to-blue-50/95 rounded-xl sm:rounded-2xl lg:rounded-3xl border-2 sm:border-3 lg:border-4 border-white shadow-2xl backdrop-blur-md">
+        <div class="p-3 sm:p-4 border-b-2 border-blue-200/50">
+          <h2 class="text-lg sm:text-xl lg:text-2xl font-black text-blue-600 uppercase tracking-wide flex items-center gap-2 flex-wrap">
+            <span class="flex items-center gap-1 flex-wrap">
+              ❄️
+              <span class="text-sm sm:text-base lg:text-lg">
+                {if @current_language == "es",
+                  do: "Reportes ICE Recientes",
+                  else: "Recent ICE Reports"}
+              </span>
+            </span>
+            <span class="text-xs sm:text-sm bg-gradient-to-r from-red-400 to-blue-400 text-white px-2 py-1 rounded-full">
+              {if @current_language == "es", do: "FRESCO", else: "FRESH"}
+            </span>
+          </h2>
+          <!-- Explanatory text for all screen sizes -->
+          <div class="mt-2">
+            <p class="text-xs sm:text-sm text-blue-500 font-medium leading-tight">
+              {if @current_language == "es",
+                do: "Los reportes expiran automáticamente después de 4 horas.",
+                else: "Reports auto-expire after 4 hours."}
+              <span class="hidden sm:inline">
+                {if @current_language == "es", do: "Haz clic", else: "Click"}
+              </span>
+              <span class="sm:hidden">
+                {if @current_language == "es", do: "Toca", else: "Tap"}
+              </span>
+              {if @current_language == "es",
+                do: "direcciones para navegar en el mapa.",
+                else: "addresses to navigate on map."}
+            </p>
+          </div>
+        </div>
+
+        <div class="p-3 sm:p-4 lg:p-6">
+          <%= if @reports_empty? do %>
+            <div class="text-center py-8 sm:py-10 lg:py-12 text-blue-500">
+              <div class="text-6xl sm:text-7xl lg:text-8xl mb-3 sm:mb-4 animate-bounce">🧊</div>
+              <p class="text-lg sm:text-xl font-black">
+                {if @current_language == "es", do: "¡Sin reportes aún!", else: "No reports yet!"}
+              </p>
+              <p class="text-base sm:text-lg font-bold opacity-75">
+                <span class="hidden sm:inline">
+                  {if @current_language == "es", do: "Haz clic", else: "Click"}
+                </span>
+                <span class="sm:hidden">
+                  {if @current_language == "es", do: "Toca", else: "Tap"}
+                </span>
+                {if @current_language == "es",
+                  do: "en el mapa para reportar actividad!",
+                  else: "on the map to report activity!"} ❄️
+              </p>
+            </div>
+          <% else %>
+            <div id="reports" phx-update="stream" class="space-y-3 sm:space-y-4">
+              <%= for {id, report} <- @streams.reports do %>
+                <div
+                  id={id}
+                  data-latitude={report.latitude}
+                  data-longitude={report.longitude}
+                  data-type={report.type}
+                  data-inserted-at={report.inserted_at}
+                  class="bg-gradient-to-r from-blue-50 to-red-50 border-l-4 sm:border-l-6 border-red-400 p-3 sm:p-4 rounded-r-lg sm:rounded-r-2xl shadow-lg relative overflow-hidden"
+                >
+                  <div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/30">
+                  </div>
+                  <div class="relative z-10">
+                    <div class="flex items-center space-x-2 sm:space-x-3 mb-2 flex-wrap">
+                      <span class="bg-gradient-to-r from-red-500 to-blue-500 text-white px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-black uppercase">
+                        {report_type_display_translated(report.type, @current_language)}
+                      </span>
+                      <span class="text-blue-600 text-xs sm:text-sm font-black flex items-center gap-1">
+                        ❄️ {format_time_ago(report.inserted_at)}
+                      </span>
+                    </div>
+                    <%= if report.location_description do %>
+                      <div
+                        class="px-2 sm:px-3 py-2 bg-gradient-to-r from-blue-50 to-red-50 rounded-lg border border-blue-200 hover:border-blue-300 active:border-blue-400 cursor-pointer transition-all duration-200 hover:shadow-md active:shadow-sm mt-2 touch-manipulation"
+                        phx-click="fly_to_report"
+                        phx-value-lat={report.latitude}
+                        phx-value-lng={report.longitude}
+                        phx-value-address={report.location_description}
+                        title="Navigate to this location on the map"
+                      >
+                        <div class="font-bold text-blue-700 text-xs sm:text-sm leading-tight">
+                          {report.location_description}
+                        </div>
+                        <div class="text-xs text-blue-500 mt-1">
+                          📍
+                          <span class="hidden sm:inline">
+                            {if @current_language == "es",
+                              do: "Haz clic para navegar a la ubicación",
+                              else: "Click to navigate to location"}
+                          </span>
+                          <span class="sm:hidden">
+                            {if @current_language == "es",
+                              do: "Toca para navegar",
+                              else: "Tap to navigate"}
+                          </span>
+                        </div>
+                      </div>
+                    <% end %>
+                    <%= if report.description do %>
+                      <p class="text-blue-600 text-xs sm:text-sm mt-1 font-medium">
+                        <%= if @current_language == "es" and report.description == "Reported via map click" do %>
+                          Reportado mediante clic en el mapa
+                        <% else %>
+                          {report.description}
+                        <% end %>
+                      </p>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+            
+<!-- Pagination Controls -->
+            <%= if @total_pages > 1 do %>
+              <div class="mt-6 border-t border-blue-200 pt-4">
+                <div class="flex items-center justify-between">
+                  <!-- Reports count info -->
+                  <div class="text-xs sm:text-sm text-blue-600 font-medium">
+                    <%= if @current_language == "es" do %>
+                      Mostrando {(@current_page - 1) * @per_page + 1} - {min(
+                        @current_page * @per_page,
+                        @total_count
+                      )} de {@total_count} reportes
+                    <% else %>
+                      Showing {(@current_page - 1) * @per_page + 1} - {min(
+                        @current_page * @per_page,
+                        @total_count
+                      )} of {@total_count} reports
+                    <% end %>
+                  </div>
+                  
+<!-- Pagination buttons -->
+                  <div class="flex items-center gap-2">
+                    <!-- Previous button -->
+                    <button
+                      phx-click="previous_page"
+                      disabled={not @has_previous}
+                      class="px-3 py-1 text-xs sm:text-sm font-bold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
+                    >
+                      <span class="hidden sm:inline">
+                        {if @current_language == "es", do: "← Anterior", else: "← Previous"}
+                      </span>
+                      <span class="sm:hidden">←</span>
+                    </button>
+                    
+<!-- Page info -->
+                    <div class="flex items-center gap-1 text-xs sm:text-sm text-blue-600 font-medium">
+                      <span class="hidden sm:inline">
+                        {if @current_language == "es", do: "Página", else: "Page"}
+                      </span>
+                      <span class="font-bold">{@current_page}</span>
+                      <span>{if @current_language == "es", do: "de", else: "of"}</span>
+                      <span class="font-bold">{@total_pages}</span>
+                    </div>
+                    
+<!-- Next button -->
+                    <button
+                      phx-click="next_page"
+                      disabled={not @has_next}
+                      class="px-3 py-1 text-xs sm:text-sm font-bold rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700"
+                    >
+                      <span class="hidden sm:inline">
+                        {if @current_language == "es", do: "Siguiente →", else: "Next →"}
+                      </span>
+                      <span class="sm:hidden">→</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    
+<!-- GitHub Attribution Footer -->
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 pb-4 pt-8 relative z-10">
+      <div class="text-center">
+        <a
+          href="https://github.com/ICE-Reporter/ICE_REPORTER"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2 text-white/70 hover:text-white transition-colors duration-200"
+        >
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 0C5.374 0 0 5.373 0 12 0 17.302 3.438 21.8 8.207 23.387c.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0112 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.300 24 12c0-6.627-5.373-12-12-12z" />
+          </svg>
+          <span class="text-sm font-medium">GitHub</span>
+        </a>
+        <div class="mt-1 text-xs text-white/50">
+          {if @current_language == "es",
+            do: "Construido con cuidado por organizadores comunitarios",
+            else: "Built with care by community organizers"}
+        </div>
+      </div>
+    </div>
+  </div>
+</Layouts.app>
