@@ -7,7 +7,7 @@ defmodule IceReporter.Services.ReportService do
   asynchronous address resolution.
   """
 
-  alias IceReporter.{RateLimiter, Reports}
+  alias IceReporter.{RateLimiter, Reports, Boundaries}
   alias IceReporter.Services.AddressService
   require Logger
 
@@ -100,17 +100,17 @@ defmodule IceReporter.Services.ReportService do
   def validate_and_normalize_coordinates(_), do: {:error, "Missing coordinates"}
 
   @doc """
-  Validates that coordinates are within acceptable geographic bounds.
+  Validates that coordinates are within US geographic boundaries.
 
-  Currently validates for Continental United States.
+  Uses official Census Bureau TIGER/Line boundary data stored in SQLite database
+  with precise point-in-polygon validation for all 50 states and territories.
   """
   @spec validate_coordinates(coordinate(), coordinate()) :: :ok | {:error, String.t()}
   def validate_coordinates(lat, lng) when is_number(lat) and is_number(lng) do
-    # Continental US bounds (approximate)
-    if lat >= 20.0 and lat <= 50.0 and lng >= -130.0 and lng <= -60.0 do
+    if Boundaries.contains_point?(lng, lat) do
       :ok
     else
-      {:error, "Coordinates must be within the Continental United States"}
+      {:error, "Coordinates must be within the United States"}
     end
   end
 

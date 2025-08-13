@@ -24,7 +24,8 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 ### 🗺️ Interactive Map Reporting
 - **One-click reporting**: Click anywhere on the map to report ICE activity
 - **Real-time updates**: Reports appear instantly across all connected users
-- **Geographic validation**: Ensures reports are within the continental United States
+- **Geographic validation**: Precise boundary validation using official US Census data for all 50 states and territories
+- **Boundary visualization**: Interactive map overlay showing US territorial boundaries
 - **Activity types**: Checkpoint, Operation, Patrol, and Detention Facility reporting
 
 ### 🔍 Address Search & Navigation
@@ -57,6 +58,7 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 - **[Phoenix LiveView 1.0.9](https://hexdocs.pm/phoenix_live_view/)**: Real-time server-rendered HTML
 - **[Ecto](https://hexdocs.pm/ecto/)**: Database wrapper and query generator
 - **[SQLite](https://sqlite.org/)**: Embedded database for simplicity and portability
+- **[Topo](https://hex.pm/packages/topo)**: Geometric operations for point-in-polygon validation
 - **[Bandit](https://hex.pm/packages/bandit)**: Modern HTTP server for Phoenix
 - **[Req](https://hex.pm/packages/req)**: HTTP client for external API requests
 - **[castore](https://hex.pm/packages/castore)**: SSL certificate store for HTTPS requests
@@ -74,6 +76,10 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 - **[Heroicons](https://heroicons.com/)**: Beautiful hand-crafted SVG icons from Tailwind Labs
 - **[Leaflet.js v1.9.4](https://leafletjs.com/)**: Interactive map library
 - **[OpenStreetMap](https://www.openstreetmap.org/)**: Free map tiles and geocoding
+
+### Geographic Data
+- **[US Census Bureau TIGER/Line](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html)**: Official US boundary data for all 50 states and territories
+- **SQLite boundary database**: Stores Census boundary data for precise coordinate validation
 
 ### Services
 - **[Nominatim](https://nominatim.openstreetmap.org/)**: Address search and reverse geocoding
@@ -99,9 +105,9 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 - **3 reports per 10 minutes** per IP address/browser fingerprint
 - **hCaptcha verification** required for additional reports
 - **Captcha failure cleanup** automatically removes all reports from users who fail verification
-- **Geographic validation** prevents ocean/invalid coordinate reports
+- **Precise geographic validation** using official US Census boundary data prevents invalid coordinate reports
 - **Duplicate detection** blocks exact coordinate matches within 1 hour
-- **Continental US bounds** enforcement
+- **US territorial bounds** enforcement for all 50 states and territories
 
 ## Trust & Privacy
 
@@ -246,8 +252,27 @@ CREATE INDEX idx_reports_expires ON reports(expires_at);
 CREATE INDEX idx_reports_location ON reports(latitude, longitude);
 ```
 
+### US Boundaries Table
+```sql
+CREATE TABLE us_boundaries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,                    -- State/territory name (e.g., "California", "Puerto Rico")
+  state_code TEXT,                       -- State abbreviation (e.g., "CA", "PR")
+  geometry_type TEXT NOT NULL,           -- "Polygon" or "MultiPolygon"
+  coordinates TEXT NOT NULL,             -- GeoJSON coordinates as JSON string
+  bbox TEXT,                             -- Bounding box for spatial indexing
+  inserted_at DATETIME NOT NULL,         -- UTC timestamp
+  updated_at DATETIME NOT NULL           -- UTC timestamp
+);
+
+-- Indexes for boundary validation performance
+CREATE INDEX idx_boundaries_type ON us_boundaries(geometry_type);
+CREATE INDEX idx_boundaries_state ON us_boundaries(state_code);
+```
+
 ### Data Lifecycle
 - **Creation**: Reports are created with coordinates and type
+- **Geographic Validation**: Coordinates validated against US Census boundary data using point-in-polygon algorithms
 - **Address Resolution**: Location descriptions are added asynchronously
 - **Expiration**: Reports automatically expire after 4 hours
 - **Cleanup**: Expired reports remain in database for historical purposes but are filtered from queries
@@ -259,6 +284,8 @@ ice_reporter/
 ├── lib/
 │   ├── ice_reporter/
 │   │   ├── application.ex           # OTP application
+│   │   ├── boundaries.ex            # US boundary validation context
+│   │   ├── boundary.ex              # US boundary schema
 │   │   ├── cleanup_worker.ex        # Automatic cleanup GenServer
 │   │   ├── rate_limiter.ex          # Rate limiting GenServer
 │   │   ├── repo.ex                  # Database repository
@@ -288,7 +315,11 @@ ice_reporter/
 │   ├── prod.exs                     # Production config
 │   └── runtime.exs                  # Runtime configuration
 ├── priv/
-│   ├── repo/migrations/             # Database migrations
+│   ├── repo/
+│   │   ├── migrations/              # Database migrations
+│   │   │   ├── *_create_reports.exs # Reports table migration  
+│   │   │   └── *_create_us_boundaries.exs # US boundaries table migration
+│   │   └── seeds.exs                # Database seeding
 │   └── static/                      # Static assets
 ├── test/
 │   ├── ice_reporter/                # Context tests

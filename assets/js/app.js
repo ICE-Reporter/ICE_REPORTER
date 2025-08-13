@@ -38,11 +38,207 @@ let removedReportIds = new Set(); // Track report IDs that have been removed to 
 let liveViewSocket = null; // Store the LiveView socket reference
 let browserFingerprint = null; // Store browser fingerprint
 
+// Store current language globally
+let currentLanguage = 'en';
+
+// US boundary validation now handled server-side via SQLite database
+
+// Server-side validation is authoritative - client-side provides basic sanity checks only
+
+async function isValidUSCoordinate(lat, lng) {
+    
+    try {
+        // Use server-side validation via LiveView event
+        return new Promise((resolve) => {
+            if (liveViewSocket) {
+                // Set up a one-time listener for the validation response
+                const handleValidation = (e) => {
+                    window.removeEventListener('phx:coordinate_validation_result', handleValidation);
+                    const isValid = e.detail.valid;
+                    resolve(isValid);
+                };
+                
+                window.addEventListener('phx:coordinate_validation_result', handleValidation);
+                
+                // Send validation request to server
+                liveViewSocket.pushEvent("validate_coordinates", {
+                    latitude: lat,
+                    longitude: lng
+                });
+                
+                // Fallback timeout in case server doesn't respond
+                setTimeout(() => {
+                    window.removeEventListener('phx:coordinate_validation_result', handleValidation);
+                    resolve(isValidUSCoordinateFallback(lat, lng));
+                }, 2000);
+            } else {
+                resolve(isValidUSCoordinateFallback(lat, lng));
+            }
+        });
+    } catch (error) {
+        console.error('Error in server validation:', error);
+        return isValidUSCoordinateFallback(lat, lng);
+    }
+}
+
+// Basic sanity check fallback (server validation is authoritative)
+function isValidUSCoordinateFallback(lat, lng) {
+    // Basic coordinate range checks for US territory
+    // Continental US, Alaska, Hawaii, and territories
+    const isValidRange = (
+        (lat >= 18.0 && lat <= 72.0 && lng >= -180.0 && lng <= -65.0) // Covers all US territory
+    );
+    
+    if (isValidRange) {
+        return true;
+    }
+    
+    return false;
+}
+
+// Expose validation function globally for debugging
+window.isValidUSCoordinate = isValidUSCoordinate;
+
+// Cache for US boundaries data
+let cachedUSBoundaries = null;
+let usBoundariesLayer = null;
+
+// Load US boundaries from database and display as map layer
+function loadUSBoundariesLayer() {
+    if (!leafletMap) return;
+    
+    // If we have cached boundaries, add them immediately
+    if (cachedUSBoundaries) {
+        addBoundariesToMap(cachedUSBoundaries);
+        return;
+    }
+    
+    // If we have a LiveView socket, request fresh data
+    if (liveViewSocket) {
+        // Request boundary data from server
+        liveViewSocket.pushEvent("get_us_boundaries", {});
+        
+        // Listen for boundary data response
+        window.addEventListener('phx:us_boundaries_data', (e) => {
+            const boundaries = e.detail.boundaries;
+            cachedUSBoundaries = boundaries; // Cache for future use
+            addBoundariesToMap(boundaries);
+        }, { once: true });
+    }
+}
+
+// Add boundaries to map
+function addBoundariesToMap(boundaries) {
+    if (!leafletMap || usBoundariesLayer) return;
+    
+    // Create a layer group for all US boundaries
+    usBoundariesLayer = L.layerGroup();
+    
+    // Simple boundary styling
+    const boundaryStyle = {
+        color: '#2563eb',
+        weight: 1,
+        opacity: 0.6,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.05,
+        interactive: false
+    };
+    
+    // Process boundaries
+    boundaries.forEach(boundary => {
+        try {
+            const coordinates = JSON.parse(boundary.coordinates);
+            
+            if (boundary.geometry_type === 'Polygon') {
+                // Convert GeoJSON to Leaflet format: [lat, lng] instead of [lng, lat]
+                const leafletCoordinates = coordinates.map(ring => 
+                    ring.map(coord => [coord[1], coord[0]])
+                );
+                
+                const polygon = L.polygon(leafletCoordinates, boundaryStyle);
+                usBoundariesLayer.addLayer(polygon);
+                
+            } else if (boundary.geometry_type === 'MultiPolygon') {
+                // Handle MultiPolygon (states with islands)
+                coordinates.forEach(polygon => {
+                    const leafletCoords = polygon.map(ring => 
+                        ring.map(coord => [coord[1], coord[0]])
+                    );
+                    
+                    const multiPoly = L.polygon(leafletCoords, boundaryStyle);
+                    usBoundariesLayer.addLayer(multiPoly);
+                });
+            }
+        } catch (error) {
+            console.error('Error parsing boundary data:', error);
+        }
+    });
+    
+    // Add boundaries to map immediately
+    usBoundariesLayer.addTo(leafletMap);
+    
+}
+
+
+
+// Preload US boundaries data for faster map initialization
+function preloadUSBoundaries() {
+    if (!liveViewSocket || cachedUSBoundaries) return;
+    
+    
+    // Request boundary data from server immediately
+    liveViewSocket.pushEvent("get_us_boundaries", {});
+    
+    // Listen for boundary data response and cache it
+    window.addEventListener('phx:us_boundaries_data', (e) => {
+        const boundaries = e.detail.boundaries;
+        cachedUSBoundaries = boundaries;
+    }, { once: true });
+}
+
+// Show coordinate error message that auto-disappears
+function showCoordinateError(latlng) {
+    const isSpanish = currentLanguage === 'es';
+    const errorTitle = isSpanish ? '❌ Ubicación No Válida' : '❌ Invalid Location';
+    const errorMessage = isSpanish ? 'Los reportes solo pueden crearse dentro de los Estados Unidos' : 'Reports can only be created within the United States';
+    
+    const errorPopupContent = `
+    <div class="text-center p-3" style="z-index: 9999;">
+        <h3 class="text-base sm:text-lg font-black text-red-600 mb-2">${errorTitle}</h3>
+        <p class="text-sm text-red-500 font-medium">${errorMessage}</p>
+    </div>
+    `;
+
+    const errorPopup = L.popup({
+        closeButton: false,
+        autoClose: false,
+        closeOnClick: false,
+        className: 'error-popup'
+    })
+    .setLatLng(latlng)
+    .setContent(errorPopupContent)
+    .openOn(leafletMap);
+
+    // Auto-close after 3 seconds (like the address found popup)
+    setTimeout(() => {
+        if (errorPopup && leafletMap.hasLayer(errorPopup)) {
+            leafletMap.closePopup(errorPopup);
+        }
+    }, 3000);
+}
+
 // LiveView hook for map initialization
 const Hooks = {
     MapContainer: {
         mounted() {
             liveViewSocket = this; // Store reference to the LiveView
+            currentLanguage = this.el.dataset.language || 'en'; // Get language from data attribute
+            
+            // Preload boundaries data immediately for faster map loading
+            if (!cachedUSBoundaries) {
+                preloadUSBoundaries();
+            }
+            
             initializeLeaflet();
         },
         destroyed() {
@@ -53,6 +249,9 @@ const Hooks = {
                 temporaryMarkers = []; // Clear temporary markers
                 temporaryMarkersByFingerprint.clear(); // Clear fingerprint tracking
                 removedReportIds.clear(); // Clear removed IDs tracking
+                // Reset boundary cache and layer
+                usBoundariesLayer = null;
+                cachedUSBoundaries = null;
             }
             liveViewSocket = null;
         },
@@ -153,6 +352,10 @@ window.addEventListener("phx:load_existing_reports", (e) => {
     loadExistingReports(e.detail.reports);
 });
 
+window.addEventListener("phx:language_changed", (e) => {
+    currentLanguage = e.detail.language || 'en';
+});
+
 window.addEventListener("phx:add_report_marker", (e) => {
     addReportMarker(
         e.detail.latitude,
@@ -227,6 +430,8 @@ function initializeLeaflet() {
         leafletMap.remove();
         leafletMap = null;
         reportMarkers.clear();
+        // Reset boundary layer but keep cached data for faster reload
+        usBoundariesLayer = null;
     }
 
 
@@ -236,24 +441,42 @@ function initializeLeaflet() {
         zoom: 4,
         minZoom: 3,
         maxZoom: 18,
+        // Optional: Restrict map bounds to US territory only
+        // maxBounds: [
+        //     [18.0, -180.0], // Southwest corner (includes Hawaii, Alaska)
+        //     [72.0, -65.0]   // Northeast corner
+        // ],
+        // maxBoundsViscosity: 1.0 // Prevents dragging outside bounds
     });
 
-    // Add tile layer - using OpenStreetMap (free, no API key needed)
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap contributors",
+    // Use CartoDB Voyager for reliable high contrast with clear roads
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        attribution: "© OpenStreetMap, © CartoDB",
         maxZoom: 18,
     }).addTo(leafletMap);
+    
+    // Alternative: Standard OpenStreetMap (has more visible borders)
+    // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    //     attribution: "© OpenStreetMap contributors",
+    //     maxZoom: 18,
+    // }).addTo(leafletMap);
 
-    // Set map bounds to roughly USA
-    const usaBounds = [
-        [20.0, -130.0], // Southwest coordinates
-        [50.0, -60.0], // Northeast coordinates
-    ];
-    leafletMap.setMaxBounds(usaBounds);
+    // Load and display US boundaries from our database
+    loadUSBoundariesLayer();
+
+    // Allow global map bounds since we validate all 50 states server-side
+    // This enables users to navigate to Alaska, Hawaii, and US territories
+    // Server-side validation will reject non-US coordinates
 
     // Add click handler for placing reports
-    leafletMap.on("click", function(e) {
-        showReportPopup(e.latlng);
+    leafletMap.on("click", async function(e) {
+        // Validate coordinates before showing popup (now async)
+        const isValid = await isValidUSCoordinate(e.latlng.lat, e.latlng.lng);
+        if (isValid) {
+            showReportPopup(e.latlng);
+        } else {
+            showCoordinateError(e.latlng);
+        }
     });
 
 
@@ -435,11 +658,14 @@ function showAddressSuggestions(suggestions) {
 
     const suggestionsHTML = suggestions
         .map(
-            (suggestion) => `
+            (suggestion, index) => `
         <div class="address-suggestion px-4 py-3 hover:bg-gradient-to-r hover:from-blue-50 hover:to-red-50 cursor-pointer border-b border-blue-100 last:border-b-0 transition-all duration-200"
+             role="option"
+             aria-selected="false"
+             tabindex="-1"
              onclick="selectAddress(${suggestion.lat}, ${suggestion.lng}, '${suggestion.address.replace(/'/g, "\\'")}')">
           <div class="font-bold text-blue-700 text-sm">${suggestion.address}</div>
-          <div class="text-xs text-blue-500 mt-1">📍 Click to navigate</div>
+          <div class="text-xs text-blue-500 mt-1" aria-hidden="true">📍 Click to navigate</div>
         </div>
       `,
         )
@@ -447,13 +673,26 @@ function showAddressSuggestions(suggestions) {
 
     suggestionsContainer.innerHTML = `<div class="bg-white border-3 border-blue-200 rounded-xl mt-2 shadow-2xl max-h-60 overflow-y-auto">${suggestionsHTML}</div>`;
     suggestionsContainer.classList.remove("hidden");
+    
+    // Update ARIA attributes
+    const searchInput = document.getElementById("address-search");
+    if (searchInput) {
+        searchInput.setAttribute("aria-expanded", "true");
+    }
 }
 
 function hideAddressSuggestions() {
     const suggestionsContainer = document.getElementById("address-suggestions");
+    const searchInput = document.getElementById("address-search");
+    
     if (suggestionsContainer) {
         suggestionsContainer.classList.add("hidden");
         suggestionsContainer.innerHTML = "";
+    }
+    
+    // Update ARIA attributes
+    if (searchInput) {
+        searchInput.setAttribute("aria-expanded", "false");
     }
 }
 
@@ -557,25 +796,33 @@ function showReportPopup(latlng) {
         leafletMap.closePopup(reportPopup);
     }
 
+    // Translate popup content based on current language
+    const isSpanish = currentLanguage === 'es';
+    const title = isSpanish ? '🧊 Reportar Actividad' : '🧊 Report Activity';
+    const checkpointText = isSpanish ? '🛑 Punto de control' : '🛑 Checkpoint';
+    const operationText = isSpanish ? '🏠 Operación' : '🏠 Operation';
+    const patrolText = isSpanish ? '👮 Patrulla' : '👮 Patrol';
+    const facilityText = isSpanish ? '🧊 Instalación' : '🧊 Facility';
+
     const popupContent = `
     <div class="text-center p-2 sm:p-3" style="z-index: 9999;">
-      <h3 class="text-base sm:text-lg font-black text-blue-600 mb-2 sm:mb-3">🧊 Report Activity</h3>
+      <h3 class="text-base sm:text-lg font-black text-blue-600 mb-2 sm:mb-3">${title}</h3>
       <div class="grid grid-cols-1 gap-1.5 sm:gap-2 w-[160px] sm:w-[200px]">
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'checkpoint')" 
                 class="bg-white border-2 border-red-500 text-red-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-bold hover:bg-red-50 hover:scale-105 transition-all text-xs sm:text-sm">
-          🛑 Checkpoint
+          ${checkpointText}
         </button>
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'raid')" 
                 class="bg-white border-2 border-orange-500 text-orange-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-bold hover:bg-orange-50 hover:scale-105 transition-all text-xs sm:text-sm">
-          🏠 Operation
+          ${operationText}
         </button>
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'patrol')" 
                 class="bg-white border-2 border-blue-500 text-blue-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-bold hover:bg-blue-50 hover:scale-105 transition-all text-xs sm:text-sm">
-          👮 Patrol
+          ${patrolText}
         </button>
         <button onclick="submitReport('${latlng.lat}', '${latlng.lng}', 'detention')" 
                 class="bg-white border-2 border-purple-500 text-purple-600 px-2 py-1.5 sm:px-4 sm:py-2 rounded-lg sm:rounded-xl font-bold hover:bg-purple-50 hover:scale-105 transition-all text-xs sm:text-sm">
-          🧊 Facility
+          ${facilityText}
         </button>
       </div>
     </div>
@@ -1138,9 +1385,221 @@ style.textContent = `
     .leaflet-popup-content-wrapper {
       border-radius: 12px;
     }
+    
+    /* Address suggestion focus styles */
+    .address-suggestion.focused {
+      background-color: #3b82f6 !important;
+      color: white !important;
+    }
   }
 `;
 document.head.appendChild(style);
+
+// ===== ACCESSIBILITY FUNCTIONS =====
+
+// Focus management variables
+let lastFocusedElement = null;
+let focusableElements = [];
+let currentFocusIndex = 0;
+
+// Screen reader announcement function
+function announceToScreenReader(message, urgent = false) {
+    const container = urgent ? document.getElementById('sr-urgent') : document.getElementById('sr-announcements');
+    if (container) {
+        // Clear previous announcement
+        container.textContent = '';
+        
+        // Add new announcement with slight delay to ensure screen readers pick it up
+        setTimeout(() => {
+            container.textContent = message;
+        }, 100);
+        
+        // Clear after announcement to avoid repetition
+        setTimeout(() => {
+            container.textContent = '';
+        }, 3000);
+    }
+}
+
+// Focus trap for modals
+function trapFocus(modalElement) {
+    if (!modalElement) return;
+    
+    focusableElements = modalElement.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    
+    if (focusableElements.length === 0) return;
+    
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+    
+    // Focus first element
+    firstElement.focus();
+    
+    // Add event listener for tab trapping
+    const trapTabKey = (e) => {
+        if (e.key === 'Tab') {
+            if (e.shiftKey) {
+                // Shift + Tab
+                if (document.activeElement === firstElement) {
+                    e.preventDefault();
+                    lastElement.focus();
+                }
+            } else {
+                // Tab
+                if (document.activeElement === lastElement) {
+                    e.preventDefault();
+                    firstElement.focus();
+                }
+            }
+        }
+        
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            closeModal();
+        }
+    };
+    
+    modalElement.addEventListener('keydown', trapTabKey);
+    
+    // Store cleanup function
+    modalElement._cleanupFocusTrap = () => {
+        modalElement.removeEventListener('keydown', trapTabKey);
+    };
+}
+
+// Close modal and restore focus
+function closeModal() {
+    const modal = document.getElementById('captcha-modal');
+    if (modal && modal._cleanupFocusTrap) {
+        modal._cleanupFocusTrap();
+    }
+    
+    // Restore focus to previously focused element
+    if (lastFocusedElement) {
+        lastFocusedElement.focus();
+        lastFocusedElement = null;
+    }
+    
+    // Trigger Phoenix event to close modal
+    if (window.liveSocket) {
+        window.liveSocket.execJS(document.body, "phx-click=\"cancel_captcha\"");
+    }
+}
+
+// Store focus before opening modal
+function storeFocusBeforeModal() {
+    lastFocusedElement = document.activeElement;
+}
+
+// Event listeners for modal management
+window.addEventListener('phx:captcha_shown', () => {
+    storeFocusBeforeModal();
+    
+    // Wait for modal to be fully rendered
+    setTimeout(() => {
+        const modal = document.getElementById('captcha-modal');
+        if (modal) {
+            trapFocus(modal);
+            announceToScreenReader('Security verification dialog opened. Please complete the captcha to continue.', true);
+        }
+    }, 100);
+});
+
+window.addEventListener('phx:captcha_hidden', () => {
+    if (lastFocusedElement) {
+        lastFocusedElement.focus();
+        lastFocusedElement = null;
+    }
+});
+
+// Add keyboard navigation for address suggestions
+function addAddressKeyboardNavigation() {
+    const addressInput = document.getElementById('address-search');
+    if (!addressInput) return;
+    
+    let currentIndex = -1;
+    
+    addressInput.addEventListener('keydown', (e) => {
+        const suggestions = document.querySelectorAll('.address-suggestion');
+        if (suggestions.length === 0) return;
+        
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                currentIndex = Math.min(currentIndex + 1, suggestions.length - 1);
+                updateSuggestionFocus(suggestions, currentIndex);
+                break;
+                
+            case 'ArrowUp':
+                e.preventDefault();
+                currentIndex = Math.max(currentIndex - 1, -1);
+                if (currentIndex === -1) {
+                    addressInput.focus();
+                    clearSuggestionFocus(suggestions);
+                } else {
+                    updateSuggestionFocus(suggestions, currentIndex);
+                }
+                break;
+                
+            case 'Enter':
+                if (currentIndex >= 0 && suggestions[currentIndex]) {
+                    e.preventDefault();
+                    suggestions[currentIndex].click();
+                }
+                break;
+                
+            case 'Escape':
+                e.preventDefault();
+                hideSuggestions();
+                currentIndex = -1;
+                break;
+        }
+    });
+    
+    // Reset index when suggestions change
+    window.addEventListener('phx:address_suggestions_updated', () => {
+        currentIndex = -1;
+    });
+}
+
+function updateSuggestionFocus(suggestions, index) {
+    clearSuggestionFocus(suggestions);
+    if (suggestions[index]) {
+        suggestions[index].classList.add('focused');
+        suggestions[index].setAttribute('aria-selected', 'true');
+        suggestions[index].focus();
+    }
+}
+
+function clearSuggestionFocus(suggestions) {
+    suggestions.forEach(suggestion => {
+        suggestion.classList.remove('focused');
+        suggestion.setAttribute('aria-selected', 'false');
+    });
+}
+
+function hideSuggestions() {
+    const suggestionsContainer = document.getElementById('address-suggestions');
+    if (suggestionsContainer) {
+        suggestionsContainer.classList.add('hidden');
+        suggestionsContainer.setAttribute('aria-expanded', 'false');
+    }
+}
+
+// Initialize keyboard navigation when page loads
+document.addEventListener('DOMContentLoaded', addAddressKeyboardNavigation);
+
+// Announce new reports to screen readers
+window.addEventListener('phx:new_report_added', (e) => {
+    if (e.detail && e.detail.type && e.detail.location) {
+        const reportType = e.detail.type;
+        const location = e.detail.location;
+        const message = `New ${reportType} report added at ${location}`;
+        announceToScreenReader(message);
+    }
+});
 
 // The lines below enable quality of life phoenix_live_reload
 // development features:

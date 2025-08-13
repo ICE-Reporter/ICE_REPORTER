@@ -88,7 +88,8 @@ defmodule IceReporterWeb.ReportLive do
          |> assign(:rate_limit_message, message)
          |> assign(:show_captcha, true)
          |> assign(:current_fingerprint, fingerprint)
-         |> assign(:pending_report, pending_report)}
+         |> assign(:pending_report, pending_report)
+         |> push_event("captcha_shown", %{})}
 
       {:error, reason} ->
         {:noreply,
@@ -137,6 +138,7 @@ defmodule IceReporterWeb.ReportLive do
        fingerprint: fingerprint,
        report_ids: removed_report_ids
      })
+     |> push_event("captcha_hidden", %{})
      |> push_event("refresh_browser", %{reason: "captcha_cancelled"})}
   end
 
@@ -184,6 +186,34 @@ defmodule IceReporterWeb.ReportLive do
     end
   end
 
+  def handle_event("validate_coordinates", %{"latitude" => lat, "longitude" => lng}, socket) do
+    # Use the same validation logic as report creation
+    is_valid = 
+      case ReportService.validate_coordinates(lat, lng) do
+        :ok -> true
+        {:error, _reason} -> false
+      end
+
+    {:noreply, push_event(socket, "coordinate_validation_result", %{valid: is_valid})}
+  end
+
+  def handle_event("get_us_boundaries", _params, socket) do
+    # Get all US boundaries from database for map display
+    boundaries = IceReporter.Repo.all(IceReporter.Boundary)
+    
+    # Send boundary data to client (limit data size for performance)
+    boundary_data = Enum.map(boundaries, fn boundary ->
+      %{
+        id: boundary.id,
+        geometry_type: boundary.geometry_type,
+        coordinates: boundary.coordinates,
+        name: boundary.name
+      }
+    end)
+
+    {:noreply, push_event(socket, "us_boundaries_data", %{boundaries: boundary_data})}
+  end
+
   def handle_event("toggle_language", %{"language" => language}, socket) do
     # Force a complete re-render by updating all assigns
     page = socket.assigns.current_page
@@ -199,6 +229,7 @@ defmodule IceReporterWeb.ReportLive do
      |> assign(:has_previous, pagination_data.has_previous)
      |> assign(:has_next, pagination_data.has_next)
      |> stream(:reports, pagination_data.reports, reset: true)
+     |> push_event("language_changed", %{language: language})
      |> put_flash(
        :info,
        if(language == "es", do: "Idioma cambiado a Español", else: "Language changed to English")
@@ -213,6 +244,10 @@ defmodule IceReporterWeb.ReportLive do
         latitude: report.latitude,
         longitude: report.longitude,
         type: report.type
+      })
+      |> push_event("new_report_added", %{
+        type: report_type_display_translated(report.type, socket.assigns.current_language),
+        location: report.location_description || "Unknown location"
       })
 
     # For pagination, we need to refresh the current page to maintain accurate counts
@@ -308,7 +343,8 @@ defmodule IceReporterWeb.ReportLive do
      socket
      |> assign(:show_captcha, false)
      |> assign(:rate_limit_message, nil)
-     |> assign(:pending_report, nil)}
+     |> assign(:pending_report, nil)
+     |> push_event("captcha_hidden", %{})}
   end
 
   defp handle_failed_captcha(socket) do

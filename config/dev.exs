@@ -52,7 +52,7 @@ config :ice_reporter, IceReporterWeb.Endpoint,
 # Watch static and templates for browser reloading.
 config :ice_reporter, IceReporterWeb.Endpoint,
   live_reload: [
-    web_console_logger: true,
+    web_console_logger: false,
     patterns: [
       ~r"priv/static/(?!uploads/).*(js|css|png|jpeg|jpg|gif|svg)$",
       ~r"lib/ice_reporter_web/(?:controllers|live|components|router)/?.*\.(ex|heex)$"
@@ -64,6 +64,9 @@ config :ice_reporter, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
+
+# Reduce log level to reduce console noise (debug -> info)
+config :logger, level: :info
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
