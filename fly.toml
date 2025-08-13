@@ -10,7 +10,6 @@ primary_region = "ord"
     NODE_ENV = "production"
 
 [env]
-  DATABASE_PATH = "/data/ice_reporter.db"
   PHX_HOST = "ice-reporter.fly.dev"
   PORT = "8080"
 
@@ -22,9 +21,6 @@ primary_region = "ord"
   min_machines_running = 1
   processes = ["app"]
 
-[mounts]
-  source = "ice_reporter_data"
-  destination = "/data"
 
 [[statics]]
   guest_path = "/app/priv/static"
