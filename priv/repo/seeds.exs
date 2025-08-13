@@ -1,11 +1,6 @@
 # Script for populating the database. You can run it as:
 #
 #     mix run priv/repo/seeds.exs
-#
-# Inside the script, you can read and write to any of your
-# repositories directly:
-#
-#     IceReporter.Repo.insert!(%IceReporter.SomeSchema{})
-#
-# We recommend using the bang functions (`insert!`, `update!`
-# and so on) as they will fail if something goes wrong.
+
+# Load the production boundaries seed data
+Code.require_file("production_seeds.exs", __DIR__)
