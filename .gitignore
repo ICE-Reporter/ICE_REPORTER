@@ -76,3 +76,7 @@ Thumbs.db
 # Dialyzer
 /priv/plts/*.plt
 /priv/plts/*.plt.hash
+
+# Data exports
+boundaries_export.csv
+boundaries_export.json

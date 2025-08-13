@@ -57,7 +57,7 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 - **[Phoenix Framework](https://phoenixframework.org/)**: Modern web framework for Elixir
 - **[Phoenix LiveView 1.0.9](https://hexdocs.pm/phoenix_live_view/)**: Real-time server-rendered HTML
 - **[Ecto](https://hexdocs.pm/ecto/)**: Database wrapper and query generator
-- **[SQLite](https://sqlite.org/)**: Embedded database for simplicity and portability
+- **[PostgreSQL](https://postgresql.org/)**: Robust relational database for production scalability
 - **[Topo](https://hex.pm/packages/topo)**: Geometric operations for point-in-polygon validation
 - **[Bandit](https://hex.pm/packages/bandit)**: Modern HTTP server for Phoenix
 - **[Req](https://hex.pm/packages/req)**: HTTP client for external API requests
@@ -79,7 +79,7 @@ ICE Reporter is an anonymous, real-time community safety platform that allows us
 
 ### Geographic Data
 - **[US Census Bureau TIGER/Line](https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html)**: Official US boundary data for all 50 states and territories
-- **SQLite boundary database**: Stores Census boundary data for precise coordinate validation
+- **PostgreSQL boundary database**: Stores Census boundary data for precise coordinate validation
 
 ### Services
 - **[Nominatim](https://nominatim.openstreetmap.org/)**: Address search and reverse geocoding
@@ -165,6 +165,7 @@ The rate limiter uses an in-memory GenServer that:
 ### Prerequisites
 - **Elixir 1.15+** with OTP 26+
 - **Node.js 18+** for asset compilation
+- **PostgreSQL 14+** for database
 - **Git** for version control
 
 ### Installation
@@ -174,9 +175,15 @@ git clone https://github.com/yourusername/ice_reporter.git
 cd ice_reporter
 
 # Install dependencies
-mix setup
+mix deps.get
 
-# Start the development server
+# Create PostgreSQL database (ensure PostgreSQL is running)
+creatdb ice_reporter_dev
+
+# Set up database schema and seed boundary data
+mix ecto.setup
+
+# Install frontend dependencies and start server
 mix phx.server
 ```
 
@@ -218,10 +225,18 @@ mix quality.ci      # Includes format check and tests
 ```
 
 ### Environment Variables
+For development, optionally configure:
+```bash
+DATABASE_USER="your-postgres-user"      # Defaults to system user
+DATABASE_PASSWORD="your-postgres-pass"  # Defaults to empty
+HCAPTCHA_SITE_KEY="your-site-key"       # Uses test key by default
+HCAPTCHA_SECRET="your-secret-key"       # Uses test key by default
+```
+
 For production deployment, configure:
 ```bash
 SECRET_KEY_BASE="your-secret-key-here"
-DATABASE_PATH="/data/ice_reporter.db"
+DATABASE_URL="postgres://user:pass@host/db"
 PHX_HOST="your-domain.com"
 PORT="8080"
 HCAPTCHA_SITE_KEY="your-site-key"
@@ -233,16 +248,16 @@ HCAPTCHA_SECRET="your-secret-key"
 ### Reports Table
 ```sql
 CREATE TABLE reports (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id BIGSERIAL PRIMARY KEY,
   type TEXT NOT NULL,                    -- "checkpoint", "raid", "patrol", "detention"
   description TEXT,                      -- "Reported via map click"
-  latitude REAL NOT NULL,                -- Decimal degrees
-  longitude REAL NOT NULL,               -- Decimal degrees
+  latitude DECIMAL NOT NULL,             -- Decimal degrees
+  longitude DECIMAL NOT NULL,            -- Decimal degrees
   location_description TEXT,             -- "123 Main St, New York, NY"
-  expires_at DATETIME,                   -- UTC timestamp, 4 hours from creation
+  expires_at TIMESTAMP WITH TIME ZONE,  -- UTC timestamp, 4 hours from creation
   is_active BOOLEAN DEFAULT true,        -- Soft deletion flag
-  inserted_at DATETIME NOT NULL,         -- UTC timestamp
-  updated_at DATETIME NOT NULL           -- UTC timestamp
+  inserted_at TIMESTAMP WITH TIME ZONE NOT NULL,  -- UTC timestamp
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL    -- UTC timestamp
 );
 
 -- Indexes for performance
@@ -255,14 +270,14 @@ CREATE INDEX idx_reports_location ON reports(latitude, longitude);
 ### US Boundaries Table
 ```sql
 CREATE TABLE us_boundaries (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id BIGSERIAL PRIMARY KEY,
   name TEXT NOT NULL,                    -- State/territory name (e.g., "California", "Puerto Rico")
   state_code TEXT,                       -- State abbreviation (e.g., "CA", "PR")
   geometry_type TEXT NOT NULL,           -- "Polygon" or "MultiPolygon"
   coordinates TEXT NOT NULL,             -- GeoJSON coordinates as JSON string
   bbox TEXT,                             -- Bounding box for spatial indexing
-  inserted_at DATETIME NOT NULL,         -- UTC timestamp
-  updated_at DATETIME NOT NULL           -- UTC timestamp
+  inserted_at TIMESTAMP WITH TIME ZONE NOT NULL,  -- UTC timestamp
+  updated_at TIMESTAMP WITH TIME ZONE NOT NULL    -- UTC timestamp
 );
 
 -- Indexes for boundary validation performance
@@ -344,7 +359,9 @@ ice_reporter/
 ### Fly.io Deployment
 1. **Install Fly CLI**: `curl -L https://fly.io/install.sh | sh`
 2. **Login**: `flyctl auth login`
-3. **Deploy**: `flyctl deploy`
+3. **Create Postgres database**: `flyctl postgres create --name ice-reporter-db --region ord`
+4. **Attach database**: `flyctl postgres attach --app your-app-name ice-reporter-db`
+5. **Deploy**: `flyctl deploy`
 
 ### Environment Setup
 ```bash
@@ -353,19 +370,23 @@ flyctl secrets set SECRET_KEY_BASE="$(mix phx.gen.secret)"
 flyctl secrets set HCAPTCHA_SITE_KEY="your-site-key"
 flyctl secrets set HCAPTCHA_SECRET="your-secret-key"
 
-# Create persistent volume for database
-# Note: Replace 'ord' with your desired region (e.g., sea, iad, lax)
-# Region must match primary_region in fly.toml
-flyctl volumes create ice_reporter_data --region ord --size 1
+# Database connection is automatically configured via DATABASE_URL
+# when you attach the Postgres database to your app
+
+# Run database migrations and seeding
+flyctl ssh console --pty -C "/app/bin/ice_reporter eval 'IceReporter.Release.migrate()'"
+flyctl ssh console --pty -C "/app/bin/ice_reporter eval 'IceReporter.Release.seed()'"
 ```
 
 ### Production Checklist
 - [ ] Set strong `SECRET_KEY_BASE`
 - [ ] Configure production hCaptcha keys
-- [ ] Set up persistent volume for SQLite database
+- [ ] Create and attach Fly.io Postgres database
+- [ ] Run database migrations and boundary data seeding
 - [ ] Ensure castore dependency for SSL certificates
 - [ ] Configure custom domain (optional)
 - [ ] Test rate limiting and captcha flow
+- [ ] Verify boundary data validation is working
 - [ ] Configure HTTPS at deployment platform level (Fly.io handles this automatically)
 - [ ] Run `mix quality` to ensure code quality standards
 - [ ] Monitor application logs
