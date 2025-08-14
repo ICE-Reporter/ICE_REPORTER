@@ -1,6 +1,13 @@
 defmodule IceReporterWeb.Router do
   use IceReporterWeb, :router
 
+  # Content Security Policy - allows 'unsafe-eval' in development for LiveView
+  @csp_header (if Mix.env() == :dev do
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://js.hcaptcha.com https://newassets.hcaptcha.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' wss://localhost:4000 https://nominatim.openstreetmap.org https://hcaptcha.com https://api.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com;"
+  else
+    "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://js.hcaptcha.com https://newassets.hcaptcha.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' wss://localhost:4000 https://nominatim.openstreetmap.org https://hcaptcha.com https://api.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com;"
+  end)
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -9,8 +16,7 @@ defmodule IceReporterWeb.Router do
     plug :protect_from_forgery
 
     plug :put_secure_browser_headers, %{
-      "content-security-policy" =>
-        "default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com https://js.hcaptcha.com https://newassets.hcaptcha.com; style-src 'self' 'unsafe-inline' https://unpkg.com; img-src 'self' data: https:; connect-src 'self' wss://localhost:4000 https://nominatim.openstreetmap.org https://hcaptcha.com https://api.hcaptcha.com; frame-src 'self' https://hcaptcha.com https://newassets.hcaptcha.com;"
+      "content-security-policy" => @csp_header
     }
   end
 
