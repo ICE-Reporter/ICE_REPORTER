@@ -26,6 +26,10 @@ primary_region = "ord"
   guest_path = "/app/priv/static"
   url_prefix = "/static"
 
+[[mounts]]
+  source = "data"
+  destination = "/data"
+  processes = ["app"]
+
 [deploy]
   strategy = "rolling"
-  release_command = "/app/bin/ice_reporter eval \"IceReporter.Release.migrate\""

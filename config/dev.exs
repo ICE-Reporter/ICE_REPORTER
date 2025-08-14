@@ -2,11 +2,8 @@ import Config
 
 # Configure your database
 config :ice_reporter, IceReporter.Repo,
-  username: System.get_env("DATABASE_USER") || System.get_env("USER"),
-  password: System.get_env("DATABASE_PASSWORD") || "", 
-  hostname: "localhost",
-  database: "ice_reporter_dev",
-  pool_size: 10,
+  database: Path.expand("../priv/database.db", __DIR__),
+  pool_size: 5,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true
 
