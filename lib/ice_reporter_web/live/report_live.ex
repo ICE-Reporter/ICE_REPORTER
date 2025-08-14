@@ -198,26 +198,70 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_event("get_us_boundaries", _params, socket) do
-    require Logger
-    Logger.info("🗺️ Boundaries requested - fetching from database")
-    
     # Get all US boundaries from database for map display
     boundaries = IceReporter.Repo.all(IceReporter.Boundary)
-    Logger.info("🗺️ Found #{length(boundaries)} boundaries in database")
     
-    # Send boundary data to client (limit data size for performance)
+    # Send simplified boundary data to client for faster loading
     boundary_data = Enum.map(boundaries, fn boundary ->
+      simplified_coordinates = simplify_coordinates(boundary.coordinates)
       %{
         id: boundary.id,
         geometry_type: boundary.geometry_type,
-        coordinates: boundary.coordinates,
+        coordinates: simplified_coordinates,
         name: boundary.name
       }
     end)
     
-    Logger.info("🗺️ Sending #{length(boundary_data)} boundaries to client")
     {:noreply, push_event(socket, "us_boundaries_data", %{boundaries: boundary_data})}
   end
+
+  # Simplify coordinates for faster web display
+  defp simplify_coordinates(coordinates_json) do
+    try do
+      coordinates = Jason.decode!(coordinates_json)
+      simplified = simplify_geometry(coordinates)
+      Jason.encode!(simplified)
+    rescue
+      _ -> coordinates_json  # Return original if simplification fails
+    end
+  end
+
+  # Simplify polygon coordinates by keeping every Nth point
+  defp simplify_geometry(coordinates) when is_list(coordinates) do
+    case coordinates do
+      # Polygon: [[[lng, lat], [lng, lat], ...]]
+      [ring | _] when is_list(ring) and length(ring) > 0 ->
+        case hd(ring) do
+          [lng, lat] when is_number(lng) and is_number(lat) ->
+            # This is a Polygon - simplify each ring
+            Enum.map(coordinates, &simplify_ring/1)
+          
+          _ ->
+            # This might be a MultiPolygon - handle recursively
+            Enum.map(coordinates, &simplify_geometry/1)
+        end
+      
+      _ ->
+        coordinates  # Return as-is if structure is unexpected
+    end
+  end
+
+  # Simplify a coordinate ring by keeping every 5th point (but always keep first/last)
+  defp simplify_ring(ring) when is_list(ring) and length(ring) > 20 do
+    first = hd(ring)
+    last = List.last(ring)
+    
+    middle_points = ring
+    |> Enum.drop(1)
+    |> Enum.drop(-1)
+    |> Enum.with_index()
+    |> Enum.filter(fn {_point, index} -> rem(index, 5) == 0 end)
+    |> Enum.map(fn {point, _index} -> point end)
+    
+    [first] ++ middle_points ++ [last]
+  end
+
+  defp simplify_ring(ring), do: ring  # Return small rings as-is
 
   def handle_event("toggle_language", %{"language" => language}, socket) do
     # Force a complete re-render by updating all assigns

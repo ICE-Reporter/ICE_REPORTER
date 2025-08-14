@@ -99,55 +99,77 @@ function isValidUSCoordinateFallback(lat, lng) {
 // Expose validation function globally for debugging
 window.isValidUSCoordinate = isValidUSCoordinate;
 
-// Cache for US boundaries data
+// Cache for US boundaries data with persistent browser storage
 let cachedUSBoundaries = null;
 let usBoundariesLayer = null;
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+const CACHE_KEY = 'ice_reporter_boundaries_v1';
+
+// Load boundaries from localStorage cache
+function loadBoundariesFromCache() {
+    try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (!cached) return null;
+        
+        const data = JSON.parse(cached);
+        const now = Date.now();
+        
+        if (data.timestamp && (now - data.timestamp) < CACHE_DURATION) {
+            return data.boundaries;
+        } else {
+            // Cache expired, remove it
+            localStorage.removeItem(CACHE_KEY);
+            return null;
+        }
+    } catch (error) {
+        localStorage.removeItem(CACHE_KEY);
+        return null;
+    }
+}
+
+// Save boundaries to localStorage cache
+function saveBoundariesToCache(boundaries) {
+    try {
+        const data = {
+            boundaries: boundaries,
+            timestamp: Date.now()
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+    } catch (error) {
+        // Silently handle cache save errors
+    }
+}
 
 // Load US boundaries from database and display as map layer
 function loadUSBoundariesLayer() {
-    if (!leafletMap) {
-        console.log('🗺️ loadUSBoundariesLayer: No leafletMap available');
-        return;
-    }
+    if (!leafletMap) return;
     
-    // If we have cached boundaries, add them immediately
-    if (cachedUSBoundaries) {
-        console.log('🗺️ loadUSBoundariesLayer: Using cached boundaries', cachedUSBoundaries.length);
-        addBoundariesToMap(cachedUSBoundaries);
+    // Try to load from localStorage first
+    const cachedData = loadBoundariesFromCache();
+    if (cachedData) {
+        cachedUSBoundaries = cachedData;
+        addBoundariesToMap(cachedData);
         return;
     }
     
     // If we have a LiveView socket, request fresh data
     if (liveViewSocket) {
-        console.log('🗺️ loadUSBoundariesLayer: Requesting boundaries from server');
         // Request boundary data from server
         liveViewSocket.pushEvent("get_us_boundaries", {});
         
         // Listen for boundary data response
         window.addEventListener('phx:us_boundaries_data', (e) => {
             const boundaries = e.detail.boundaries;
-            console.log('🗺️ Received boundaries from server:', boundaries.length, 'boundaries');
-            cachedUSBoundaries = boundaries; // Cache for future use
+            cachedUSBoundaries = boundaries; // Cache in memory
+            saveBoundariesToCache(boundaries); // Save to localStorage
             addBoundariesToMap(boundaries);
         }, { once: true });
-    } else {
-        console.log('🗺️ loadUSBoundariesLayer: No liveViewSocket available');
     }
 }
 
 // Add boundaries to map
 function addBoundariesToMap(boundaries) {
-    if (!leafletMap) {
-        console.log('🗺️ addBoundariesToMap: No leafletMap available');
-        return;
-    }
-    
-    if (usBoundariesLayer) {
-        console.log('🗺️ addBoundariesToMap: Boundary layer already exists, skipping');
-        return;
-    }
-    
-    console.log('🗺️ addBoundariesToMap: Processing', boundaries.length, 'boundaries');
+    if (!leafletMap || usBoundariesLayer) return;
     
     // Create a layer group for all US boundaries
     usBoundariesLayer = L.layerGroup();
@@ -162,11 +184,8 @@ function addBoundariesToMap(boundaries) {
         interactive: false
     };
     
-    let successCount = 0;
-    let errorCount = 0;
-    
     // Process boundaries
-    boundaries.forEach((boundary, index) => {
+    boundaries.forEach((boundary) => {
         try {
             const coordinates = JSON.parse(boundary.coordinates);
             
@@ -178,7 +197,6 @@ function addBoundariesToMap(boundaries) {
                 
                 const polygon = L.polygon(leafletCoordinates, boundaryStyle);
                 usBoundariesLayer.addLayer(polygon);
-                successCount++;
                 
             } else if (boundary.geometry_type === 'MultiPolygon') {
                 // Handle MultiPolygon (states with islands)
@@ -190,19 +208,14 @@ function addBoundariesToMap(boundaries) {
                     const multiPoly = L.polygon(leafletCoords, boundaryStyle);
                     usBoundariesLayer.addLayer(multiPoly);
                 });
-                successCount++;
             }
         } catch (error) {
-            console.error('🗺️ Error parsing boundary data for boundary', index, ':', error, boundary);
-            errorCount++;
+            // Silently handle boundary parsing errors
         }
     });
     
-    console.log('🗺️ addBoundariesToMap: Processed', successCount, 'successfully,', errorCount, 'errors');
-    
-    // Add boundaries to map immediately
+    // Add boundaries to map
     usBoundariesLayer.addTo(leafletMap);
-    console.log('🗺️ addBoundariesToMap: Boundary layer added to map');
     
 }
 
@@ -279,6 +292,8 @@ const Hooks = {
                 // Reset boundary cache and layer
                 usBoundariesLayer = null;
                 cachedUSBoundaries = null;
+                // Clear localStorage cache as well
+                localStorage.removeItem(CACHE_KEY);
             }
             liveViewSocket = null;
         },
@@ -367,6 +382,10 @@ const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,
     params: { _csrf_token: csrfToken },
     hooks: Hooks,
+    logger: (kind, msg, data) => {
+        // Disable LiveView debug logging in development
+        // Logs are automatically disabled in production
+    }
 });
 
 // Show progress bar on live navigation and form submits
