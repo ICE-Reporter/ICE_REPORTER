@@ -383,8 +383,10 @@ const liveSocket = new LiveSocket("/live", Socket, {
     params: { _csrf_token: csrfToken },
     hooks: Hooks,
     logger: (kind, msg, data) => {
-        // Disable LiveView debug logging in development
-        // Logs are automatically disabled in production
+      // Only show debug logs in development, not production
+      if (process.env.NODE_ENV === "development") {
+        console.log(`${kind}: ${msg}`, data);
+      }
     }
 });
 
