@@ -105,31 +105,49 @@ let usBoundariesLayer = null;
 
 // Load US boundaries from database and display as map layer
 function loadUSBoundariesLayer() {
-    if (!leafletMap) return;
+    if (!leafletMap) {
+        console.log('🗺️ loadUSBoundariesLayer: No leafletMap available');
+        return;
+    }
     
     // If we have cached boundaries, add them immediately
     if (cachedUSBoundaries) {
+        console.log('🗺️ loadUSBoundariesLayer: Using cached boundaries', cachedUSBoundaries.length);
         addBoundariesToMap(cachedUSBoundaries);
         return;
     }
     
     // If we have a LiveView socket, request fresh data
     if (liveViewSocket) {
+        console.log('🗺️ loadUSBoundariesLayer: Requesting boundaries from server');
         // Request boundary data from server
         liveViewSocket.pushEvent("get_us_boundaries", {});
         
         // Listen for boundary data response
         window.addEventListener('phx:us_boundaries_data', (e) => {
             const boundaries = e.detail.boundaries;
+            console.log('🗺️ Received boundaries from server:', boundaries.length, 'boundaries');
             cachedUSBoundaries = boundaries; // Cache for future use
             addBoundariesToMap(boundaries);
         }, { once: true });
+    } else {
+        console.log('🗺️ loadUSBoundariesLayer: No liveViewSocket available');
     }
 }
 
 // Add boundaries to map
 function addBoundariesToMap(boundaries) {
-    if (!leafletMap || usBoundariesLayer) return;
+    if (!leafletMap) {
+        console.log('🗺️ addBoundariesToMap: No leafletMap available');
+        return;
+    }
+    
+    if (usBoundariesLayer) {
+        console.log('🗺️ addBoundariesToMap: Boundary layer already exists, skipping');
+        return;
+    }
+    
+    console.log('🗺️ addBoundariesToMap: Processing', boundaries.length, 'boundaries');
     
     // Create a layer group for all US boundaries
     usBoundariesLayer = L.layerGroup();
@@ -144,8 +162,11 @@ function addBoundariesToMap(boundaries) {
         interactive: false
     };
     
+    let successCount = 0;
+    let errorCount = 0;
+    
     // Process boundaries
-    boundaries.forEach(boundary => {
+    boundaries.forEach((boundary, index) => {
         try {
             const coordinates = JSON.parse(boundary.coordinates);
             
@@ -157,6 +178,7 @@ function addBoundariesToMap(boundaries) {
                 
                 const polygon = L.polygon(leafletCoordinates, boundaryStyle);
                 usBoundariesLayer.addLayer(polygon);
+                successCount++;
                 
             } else if (boundary.geometry_type === 'MultiPolygon') {
                 // Handle MultiPolygon (states with islands)
@@ -168,14 +190,19 @@ function addBoundariesToMap(boundaries) {
                     const multiPoly = L.polygon(leafletCoords, boundaryStyle);
                     usBoundariesLayer.addLayer(multiPoly);
                 });
+                successCount++;
             }
         } catch (error) {
-            console.error('Error parsing boundary data:', error);
+            console.error('🗺️ Error parsing boundary data for boundary', index, ':', error, boundary);
+            errorCount++;
         }
     });
     
+    console.log('🗺️ addBoundariesToMap: Processed', successCount, 'successfully,', errorCount, 'errors');
+    
     // Add boundaries to map immediately
     usBoundariesLayer.addTo(leafletMap);
+    console.log('🗺️ addBoundariesToMap: Boundary layer added to map');
     
 }
 

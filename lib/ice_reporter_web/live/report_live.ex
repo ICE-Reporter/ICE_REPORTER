@@ -198,8 +198,12 @@ defmodule IceReporterWeb.ReportLive do
   end
 
   def handle_event("get_us_boundaries", _params, socket) do
+    require Logger
+    Logger.info("🗺️ Boundaries requested - fetching from database")
+    
     # Get all US boundaries from database for map display
     boundaries = IceReporter.Repo.all(IceReporter.Boundary)
+    Logger.info("🗺️ Found #{length(boundaries)} boundaries in database")
     
     # Send boundary data to client (limit data size for performance)
     boundary_data = Enum.map(boundaries, fn boundary ->
@@ -210,7 +214,8 @@ defmodule IceReporterWeb.ReportLive do
         name: boundary.name
       }
     end)
-
+    
+    Logger.info("🗺️ Sending #{length(boundary_data)} boundaries to client")
     {:noreply, push_event(socket, "us_boundaries_data", %{boundaries: boundary_data})}
   end
 

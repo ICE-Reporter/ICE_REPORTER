@@ -13,6 +13,11 @@ defmodule IceReporter.Release do
     end
   end
 
+  def migrate_and_seed do
+    migrate()
+    seed()
+  end
+
   def rollback(repo, version) do
     load_app()
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))

@@ -40,6 +40,9 @@ RUN mix deps.compile
 
 COPY priv priv
 
+# Copy boundary data CSV file
+COPY boundaries_export.csv ./
+
 COPY lib lib
 
 COPY assets assets
@@ -81,6 +84,9 @@ ENV MIX_ENV="prod"
 
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/ice_reporter ./
+
+# Copy the boundary data CSV file to the runtime stage
+COPY --from=builder --chown=nobody:root /app/boundaries_export.csv ./
 
 USER nobody
 
